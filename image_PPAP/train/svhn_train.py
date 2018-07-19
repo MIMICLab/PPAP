@@ -12,8 +12,8 @@ import matplotlib.gridspec as gridspec
 
 
 def plot(samples):
-    fig = plt.figure(figsize=(32,5))
-    gs = gridspec.GridSpec(5,32)
+    fig = plt.figure(figsize=(32,3))
+    gs = gridspec.GridSpec(3,32)
     gs.update(wspace=0.05, hspace=0.05)
         
     for i, sample in enumerate(samples):
@@ -60,61 +60,63 @@ with graph.as_default():
         #input placeholder
         X = tf.placeholder(tf.float32, shape=[None,32,32,3])
         A_true_flat = X
-        
+        z_dim = 1024
+        dp_epsilon = 0.1       
         #autoencoder variables
         var_G = []
-        var_H = []
         input_shape=[None, 32, 32, 3]
         n_filters=[3, 128, 256, 512]
         filter_sizes=[5, 5, 5, 5]
         
         #discriminator variables
-        W1 = tf.Variable(xavier_init([5,5,3,128]))
-        W2 = tf.Variable(xavier_init([5,5,128,256]))
-        W3 = tf.Variable(xavier_init([5,5,256,512]))
-        W4 = tf.Variable(xavier_init([4*4*512, 1]))
-        b4 = tf.Variable(tf.zeros(shape=[1]))
-        var_D = [W1,W2,W3,W4,b4]        
+        WX1 = tf.Variable(xavier_init([5,5,3,128]))
+        WX2 = tf.Variable(xavier_init([5,5,128,256]))
+        WX3 = tf.Variable(xavier_init([5,5,256,512]))
+        WX4 = tf.Variable(xavier_init([4*4*512, 1]))
+        bX4 = tf.Variable(tf.zeros(shape=[1]))
+        var_DX = [WX1,WX2,WX3,WX4,bX4]  
         
-        G_G_sample, A_G_sample, G_pyramid, G_reverse_pyramid = autoencoder(input_shape, n_filters, filter_sizes,2, A_true_flat, var_G)
-        G_H_sample, A_H_sample, A_pyramid, A_reverse_pyramid = autoencoder(input_shape, n_filters, filter_sizes,2, G_G_sample, var_H) 
+        WZ1 = tf.Variable(xavier_init([z_dim,z_dim//2]))
+        WZ2 = tf.Variable(xavier_init([z_dim//2,z_dim//4]))
+        WZ3 = tf.Variable(xavier_init([z_dim//4,z_dim//8]))
+        WZ4 = tf.Variable(xavier_init([z_dim//8,1]))
+        bZ4 = tf.Variable(tf.zeros(shape=[1]))
+        var_DZ = [WZ1,WZ2,WZ3,WZ4,bZ4]
+        
+        G_sample, A_sample, z_true, z_true_trans = autoencoder(input_shape, n_filters, filter_sizes,2, z_dim, A_true_flat, var_G)
+        _, _, z_fake, z_fake_trans = autoencoder(input_shape, n_filters, filter_sizes,2, z_dim, G_sample, var_G, reuse=True) 
 
-        D_real_logits = discriminator(A_true_flat, var_D)
-        D_G_G_fake_logits = discriminator(G_G_sample, var_D)
-        #D_G_H_fake_logits = discriminator(G_H_sample, var_D)
-
+        DX_real_logits = X_discriminator(A_true_flat, var_DX)
+        DX_fake_logits = X_discriminator(G_sample, var_DX)
+        
+        DZ_real_logits = Z_discriminator(z_true, var_DZ, z_dim)
+        DZ_fake_logits = Z_discriminator(z_fake, var_DZ, z_dim)
+        
         global_step = tf.Variable(0, name="global_step", trainable=False)
-        A_G_loss = laploss(A_true_flat,A_G_sample) 
-        A_H_loss = laploss(G_G_sample, A_H_sample)
-        P_loss = laploss(A_true_flat, G_H_sample)
-        G_penalty = laploss(A_true_flat, G_G_sample)
-        #P_loss = z_pyramid_loss(G_reverse_pyramid, A_pyramid, A_true_flat)
-        G_loss = -tf.reduce_mean(D_G_G_fake_logits) - 0.1*(G_penalty + P_loss) + 0.1*A_G_loss
-        H_loss = 0.1*P_loss + 0.1*A_H_loss
-        D_fake_logits = tf.reduce_mean(D_G_G_fake_logits)
-        gp = gradient_penalty(G_G_sample,A_true_flat, var_D, mb_size)
-        #D_fake_logits = 0.5*(tf.reduce_mean(D_G_G_fake_logits) + tf.reduce_mean(D_G_H_fake_logits))
-        #gp = 0.5*(gradient_penalty(G_G_sample,A_true_flat, var_D, mb_size) + gradient_penalty(G_H_sample,A_true_flat, var_D, mb_size))        
-        D_loss = D_fake_logits - tf.reduce_mean(D_real_logits)+ 10.0*gp
+        A_loss = laploss(A_true_flat,A_sample) 
+        Z_loss = tf.reduce_mean(tf.pow(z_true - z_true_trans, 2))
+        optimization_losses = 0.1* A_loss + 10.0*Z_loss
+        gp_x = X_gradient_penalty(G_sample,A_true_flat, var_DX, mb_size)
+        gp_z = Z_gradient_penalty(z_fake, z_true, var_DZ, mb_size, z_dim)
+        D_Z_loss = tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DZ_real_logits) + 10.0*gp_x
+        D_X_loss = tf.reduce_mean(DX_fake_logits) - tf.reduce_mean(DX_real_logits) + 10.0*gp_z
+        
+        D_loss = tf.abs(D_X_loss - D_Z_loss) - dp_epsilon
+        G_loss = -tf.abs(tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits)) + optimization_losses
 
         tf.summary.image('Original',A_true_flat)
-        tf.summary.image('G_encoded',G_G_sample)
-        tf.summary.image('G_reconstructed',A_G_sample)
-        tf.summary.image('H_decoded',G_H_sample)
-        tf.summary.image('H_reconstructed',A_H_sample)
-        tf.summary.scalar('D_loss', -D_loss)
-        tf.summary.scalar('G_loss',tf.reduce_mean(D_G_G_fake_logits))       
-        #tf.summary.scalar('H_loss',tf.reduce_mean(D_G_H_fake_logits)) 
-        tf.summary.scalar('P_loss',P_loss)
-        tf.summary.scalar('A_G_loss',A_G_loss)
-        tf.summary.scalar('A_H_loss',A_H_loss)
+        tf.summary.image('G_sample',G_sample)
+        tf.summary.image('A_sample',A_sample)
+        tf.summary.scalar('D_loss', D_loss)
+        tf.summary.scalar('G_loss',tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits))   
+        tf.summary.scalar('A_loss',A_loss)
+        tf.summary.scalar('Z_loss',Z_loss)
         merged = tf.summary.merge_all()
         
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
 
-        D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_D, global_step=global_step)
+        D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_DX+var_DZ, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
-        H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
 
         timestamp = str(int(time.time()))
         out_dir = os.path.abspath(os.path.join(os.path.curdir, "../results/models/svhn" + timestamp))
@@ -137,30 +139,21 @@ with graph.as_default():
             for _ in range(5):
                 X_mb = next_batch(mb_size, x_train)
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})
-                _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb})
             summary, _, G_loss_curr= sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
             if it % 100 == 0:
-                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; H_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr, H_loss_curr))
+                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr))
 
             if it % 1000 == 0: 
-                samples = sess.run(G_G_sample, feed_dict={X: X_mb})
+                samples = sess.run(G_sample, feed_dict={X: X_mb})
                 samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 
-                samples = sess.run(A_G_sample, feed_dict={X: X_mb})
+                samples = sess.run(A_sample, feed_dict={X: X_mb})
                 samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval() 
-                img_set = np.append(img_set, samples_flat[:32], axis=0) 
-                
-                samples = sess.run(G_H_sample, feed_dict={X: X_mb})
-                samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval() 
-                img_set = np.append(img_set, samples_flat[:32], axis=0)
-                
-                samples = sess.run(A_H_sample, feed_dict={X: X_mb})
-                samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval() 
-                img_set = np.append(img_set, samples_flat[:32], axis=0)
+                img_set = np.append(img_set, samples_flat[:32], axis=0)             
                 
                 fig = plot(img_set)
                 plt.savefig('../results/dc_out_svhn/{}.png'.format(str(i).zfill(3)), bbox_inches='tight')
