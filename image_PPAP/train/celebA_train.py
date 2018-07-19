@@ -73,20 +73,20 @@ with graph.as_default():
 
         D_real_logits = discriminator(A_true_flat, var_D)
         D_G_G_fake_logits = discriminator(G_G_sample, var_D)
-        D_G_H_fake_logits = discriminator(G_H_sample, var_D)
+        #D_G_H_fake_logits = discriminator(G_H_sample, var_D)
 
         global_step = tf.Variable(0, name="global_step", trainable=False)
         A_G_loss = laploss(A_true_flat,A_G_sample) 
         A_H_loss = laploss(G_G_sample, A_H_sample)
-        P_loss = z_pyramid_loss(G_reverse_pyramid, A_pyramid, A_true_flat)
-
-        G_loss = -tf.reduce_mean(D_G_G_fake_logits) - 10.0*P_loss + 0.1*A_G_loss
-        H_loss = -tf.reduce_mean(D_G_H_fake_logits) + 10.0*P_loss + 0.1*A_H_loss
-        
-        D_fake_logits = 0.5*(tf.reduce_mean(D_G_G_fake_logits) + tf.reduce_mean(D_G_H_fake_logits))
-        
-        gp = 0.5*(gradient_penalty(G_G_sample,A_true_flat, var_D, mb_size) + gradient_penalty(G_H_sample,A_true_flat, var_D, mb_size))
-        
+        P_loss = laploss(A_true_flat, G_H_sample)
+        G_penalty = laploss(A_true_flat, G_G_sample)
+        #P_loss = z_pyramid_loss(G_reverse_pyramid, A_pyramid, A_true_flat)
+        G_loss = -tf.reduce_mean(D_G_G_fake_logits) - 0.1*(G_penalty + P_loss) + 0.1*A_G_loss
+        H_loss = 0.1*P_loss + 0.1*A_H_loss
+        D_fake_logits = tf.reduce_mean(D_G_G_fake_logits)
+        gp = gradient_penalty(G_G_sample,A_true_flat, var_D, mb_size)
+        #D_fake_logits = 0.5*(tf.reduce_mean(D_G_G_fake_logits) + tf.reduce_mean(D_G_H_fake_logits))
+        #gp = 0.5*(gradient_penalty(G_G_sample,A_true_flat, var_D, mb_size) + gradient_penalty(G_H_sample,A_true_flat, var_D, mb_size))        
         D_loss = D_fake_logits - tf.reduce_mean(D_real_logits)+ 10.0*gp
 
         tf.summary.image('Original',A_true_flat)
@@ -96,7 +96,7 @@ with graph.as_default():
         tf.summary.image('H_reconstructed',A_H_sample)
         tf.summary.scalar('D_loss', -D_loss)
         tf.summary.scalar('G_loss',tf.reduce_mean(D_G_G_fake_logits))       
-        tf.summary.scalar('H_loss',tf.reduce_mean(D_G_H_fake_logits)) 
+        #tf.summary.scalar('H_loss',tf.reduce_mean(D_G_H_fake_logits)) 
         tf.summary.scalar('P_loss',P_loss)
         tf.summary.scalar('A_G_loss',A_G_loss)
         tf.summary.scalar('A_H_loss',A_H_loss)
