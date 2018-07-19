@@ -44,7 +44,6 @@ with graph.as_default():
         X = tf.placeholder(tf.float32, shape=[None, X_dim])
         A_true_flat = tf.reshape(X, [-1,28,28,1]) 
         z_dim = 1024
-        dp_epsilon = 0.1
         #autoencoder variables
         var_G = []
         input_shape=[None, 28, 28, 1]
@@ -84,8 +83,9 @@ with graph.as_default():
         D_Z_loss = tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DZ_real_logits) + 10.0*gp_x
         D_X_loss = tf.reduce_mean(DX_fake_logits) - tf.reduce_mean(DX_real_logits) + 10.0*gp_z
         
-        D_loss = tf.abs(D_X_loss - D_Z_loss) - dp_epsilon
-        G_loss = -tf.abs(tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits)) + optimization_losses
+        D_loss = D_X_loss + D_Z_loss
+        G_loss = -tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits) + optimization_losses
+        dp_epsilon = tf.abs(D_X_loss - D_Z_loss)
 
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('G_sample',G_sample)
@@ -94,6 +94,7 @@ with graph.as_default():
         tf.summary.scalar('G_loss',tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits))   
         tf.summary.scalar('A_loss',A_loss)
         tf.summary.scalar('Z_loss',Z_loss)
+        tf.summary.scalar('epsilon',dp_epsilon)        
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
@@ -123,12 +124,12 @@ with graph.as_default():
             for _ in range(5):
                 X_mb, Y_mb = mnist.train.next_batch(mb_size)
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})
-            summary, _, G_loss_curr= sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
+            summary, _, G_loss_curr, epsilon_curr= sess.run([merged,G_solver, G_loss,dp_epsilon],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
             if it % 100 == 0:
-                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr))
+                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; epsilon: {:.4}; '.format(it,D_loss_curr, G_loss_curr,epsilon_curr))
 
             if it % 1000 == 0: 
                 samples = sess.run(G_sample, feed_dict={X: X_mb})
