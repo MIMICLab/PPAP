@@ -129,7 +129,7 @@ with graph.as_default():
             for _ in range(5):
                 X_mb = next_batch(mb_size, x_train)
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})
-            _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb})
+                _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb})
             summary, _, G_loss_curr= sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
