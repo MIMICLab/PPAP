@@ -92,9 +92,9 @@ with graph.as_default():
         gp_z = Z_gradient_penalty(z_fake, z_true, var_DZ, mb_size, z_dim)
         D_Z_loss = tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DZ_real_logits) + 10.0*gp_x
         D_X_loss = tf.reduce_mean(DX_fake_logits) - tf.reduce_mean(DX_real_logits) + 10.0*gp_z
-        P_loss = -(D_X_loss - D_Z_loss + dp_epsilon)
+        D_penalty = tf.abs(tf.abs(D_X_loss - D_Z_loss) - dp_epsilon)
         G_loss = -tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits) + optimization_losses
-
+        D_loss = D_Z_loss + D_X_loss + D_penalty
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('G_sample',G_sample)
         tf.summary.image('A_sample',A_sample)
@@ -107,10 +107,8 @@ with graph.as_default():
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
-
-        D_X_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_X_loss,var_list=var_DX, global_step=global_step)
-        D_Z_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_Z_loss,var_list=var_DZ, global_step=global_step)       
-        P_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(P_loss,var_list=var_DX+var_DZ, global_step=global_step)
+       
+        D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_DX+var_DZ, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
 
         timestamp = str(int(time.time()))
@@ -133,15 +131,13 @@ with graph.as_default():
         for it in range(1000000000):
             for _ in range(5):
                 X_mb = next_batch(mb_size, x_train)
-                _, D_X_loss_curr = sess.run([D_X_solver, D_X_loss],feed_dict={X: X_mb})
-                _, D_Z_loss_curr = sess.run([D_Z_solver, D_Z_loss],feed_dict={X: X_mb})                
-                _, P_loss_curr = sess.run([P_solver, P_loss],feed_dict={X: X_mb})                
+                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})          
             summary, _, G_loss_curr = sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
             if it % 100 == 0:
-                print('Iter: {}; D_X_loss: {:.4}; D_Z_loss: {:.4}; G_loss: {:.4}; P_loss: {:.4}; '.format(it,D_X_loss_curr, D_Z_loss_curr, G_loss_curr,P_loss_curr))
+                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr))
 
             if it % 1000 == 0: 
                 samples = sess.run(G_sample, feed_dict={X: X_mb})
