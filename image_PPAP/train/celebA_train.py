@@ -100,7 +100,7 @@ with graph.as_default():
         tf.summary.image('A_sample',A_sample)
         tf.summary.scalar('D_Z_loss', D_Z_loss)
         tf.summary.scalar('D_X_loss', D_X_loss)
-        tf.summary.scalar('D_Penalty',P_loss)
+        tf.summary.scalar('D_Penalty',D_penalty)
         tf.summary.scalar('G_loss',- tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits))   
         tf.summary.scalar('A_opt_loss',A_loss)
         tf.summary.scalar('Z_opt_loss',Z_loss)        
