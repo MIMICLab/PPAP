@@ -84,6 +84,7 @@ with graph.as_default():
         DZ_fake_logits = Z_discriminator(z_fake, var_DZ, z_dim)
         
         global_step = tf.Variable(0, name="global_step", trainable=False)
+        dp_epsilon = 0.1
         A_loss = laploss(A_true_flat,A_sample) 
         Z_loss = tf.reduce_mean(tf.pow(z_true - z_true_trans, 2))
         optimization_losses = 0.1* A_loss + 10.0*Z_loss
@@ -91,27 +92,26 @@ with graph.as_default():
         gp_z = Z_gradient_penalty(z_fake, z_true, var_DZ, mb_size, z_dim)
         D_Z_loss = tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DZ_real_logits) + 10.0*gp_x
         D_X_loss = tf.reduce_mean(DX_fake_logits) - tf.reduce_mean(DX_real_logits) + 10.0*gp_z
-        
-        D_loss = D_X_loss + D_Z_loss
+        D_loss = D_Z_loss + D_X_loss
+        P_loss = -(D_X_loss - D_Z_loss + dp_epsilon)
         G_loss = -tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits) + optimization_losses
-        dp_epsilon = tf.abs(D_X_loss - D_Z_loss)
 
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('G_sample',G_sample)
         tf.summary.image('A_sample',A_sample)
-        tf.summary.scalar('D_loss', D_loss)
-        tf.summary.scalar('G_loss',tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits))   
-        tf.summary.scalar('A_loss',A_loss)
-        tf.summary.scalar('Z_loss',Z_loss)
-        tf.summary.scalar('epsilon',dp_epsilon)        
+        tf.summary.scalar('D_Z_loss', D_Z_loss)
+        tf.summary.scalar('D_X_loss', D_X_loss)
+        tf.summary.scalar('D_Penalty',P_loss)
+        tf.summary.scalar('G_loss',- tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits))   
+        tf.summary.scalar('A_opt_loss',A_loss)
+        tf.summary.scalar('Z_opt_loss',Z_loss)        
         merged = tf.summary.merge_all()
-
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
 
         D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_DX+var_DZ, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
-
+        P_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(P_loss,var_list=var_DX+var_DZ, global_step=global_step)
         timestamp = str(int(time.time()))
         out_dir = os.path.abspath(os.path.join(os.path.curdir, "../results/models/celebA" + timestamp))
         checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
@@ -133,6 +133,7 @@ with graph.as_default():
             for _ in range(5):
                 X_mb = next_batch(mb_size, x_train)
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})
+                _, P_loss_curr = sess.run([P_solver, P_loss],feed_dict={X: X_mb})                 
             summary, _, G_loss_curr, epsilon_curr= sess.run([merged,G_solver, G_loss,dp_epsilon],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
