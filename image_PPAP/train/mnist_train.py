@@ -127,7 +127,7 @@ with graph.as_default():
                 X_mb, Y_mb = mnist.train.next_batch(mb_size)
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})
                 _, P_loss_curr = sess.run([P_solver, P_loss],feed_dict={X: X_mb})                
-            summary, _, G_loss_curr, epsilon_curr= sess.run([merged,G_solver, G_loss,dp_epsilon],feed_dict={X: X_mb})
+            summary, _, G_loss_curr = sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
