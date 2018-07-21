@@ -119,12 +119,24 @@ def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, 
         z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z = tf.nn.tanh(z)
         z_value = z
-        z_ = tf.matmul(z,tf.transpose(W_fc))
+        if reuse == False:
+            W_fc2 = tf.Variable(tf.random_normal([z_dim,4*4*n_filters[-1]]))
+            theta_A.append(W_fc2)
+        else:
+            W_fc2 = theta_A[idx]
+            idx+=1        
+        z_ = tf.matmul(z,W_fc2)
         z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z_ = tf.nn.relu(z_)
         current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])
         for layer_i, shape in enumerate(shapes_enc):
-            W = encoder[layer_i]
+            W_enc = encoder[layer_i]
+            if reuse == False:
+                W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
+                theta_A.append(W_fc)
+            else:
+                W = theta_A[idx]
+                idx+=1                
             shapes_dec.append(current_input.get_shape().as_list())
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
