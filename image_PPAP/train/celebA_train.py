@@ -71,21 +71,23 @@ with graph.as_default():
         bZ = tf.Variable(tf.zeros(shape=[1]))
         var_DZ = [WZ,bZ]
         
-        G_sample, A_sample = generator(input_shape, n_filters, filter_sizes,2, A_true_flat, var_G)
-        re_true, z_true, DZ_real_logits  = Z_discriminator(input_shape, n_filters, filter_sizes,2,z_dim, A_true_flat, var_A,var_DZ)
-        re_fake, z_fake, DZ_fake_logits  = Z_discriminator(input_shape, n_filters, filter_sizes,2,z_dim, G_sample, var_A, var_DZ, reuse = True)
+        G_sample, A_sample = generator(input_shape, n_filters, filter_sizes,3, A_true_flat, var_G)
+        re_true, z_true, DZ_real_logits  = Z_discriminator(input_shape, n_filters, filter_sizes,3,z_dim, A_true_flat, var_A,var_DZ)
+        re_fake, z_fake, DZ_fake_logits  = Z_discriminator(input_shape, n_filters, filter_sizes,3,z_dim, G_sample, var_A, var_DZ, reuse = True)
         
         DX_real_logits = X_discriminator(A_true_flat, var_DX)
         DX_fake_logits = X_discriminator(G_sample, var_DX)
         
         global_step = tf.Variable(0, name="global_step", trainable=False)
         dp_epsilon = 0.1
-        A_loss = laploss(A_true_flat,A_sample)
+        #A_loss = laploss(A_true_flat,A_sample)
+        A_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
         Z_loss = tf.reduce_mean(tf.pow(z_true - z_fake,2))
-        opt_loss = 0.1*A_loss - 10.0*Z_loss
-        A_D_loss = laploss(A_true_flat, re_true)
+        opt_loss = 10.0*A_loss -10.0*Z_loss
+        #A_D_loss = laploss(A_true_flat, re_true)
+        A_D_loss = tf.reduce_mean(tf.pow(A_true_flat - re_true,2))
         gp_x = X_gradient_penalty(G_sample,A_true_flat, var_DX, mb_size)
-        gp_z = Z_gradient_penalty(G_sample,A_true_flat, mb_size,input_shape, n_filters, filter_sizes,2,z_dim, G_sample, var_A, var_DZ, reuse = True)
+        gp_z = Z_gradient_penalty(G_sample,A_true_flat, mb_size,input_shape, n_filters, filter_sizes,3,z_dim, G_sample, var_A, var_DZ, reuse = True)
         
         D_Z_loss = tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DZ_real_logits) + 10.0*gp_x
         D_X_loss = tf.reduce_mean(DX_fake_logits) - tf.reduce_mean(DX_real_logits) + 10.0*gp_z
