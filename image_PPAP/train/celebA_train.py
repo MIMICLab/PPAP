@@ -55,15 +55,15 @@ with graph.as_default():
         var_G = []
 
         input_shape=[None, 64, 64, 3]
-        n_filters=[3, 128, 256, 512, 1024]
+        n_filters=[3, 64, 128, 256, 512]
         filter_sizes=[5, 5, 5, 5, 5]
         
         #discriminator variables
-        WX1 = tf.Variable(xavier_init([5,5,3,128]))
-        WX2 = tf.Variable(xavier_init([5,5,128,256]))
-        WX3 = tf.Variable(xavier_init([5,5,256,512]))
-        WX4 = tf.Variable(xavier_init([5,5,512,1024]))
-        WX5 = tf.Variable(xavier_init([4*4*1024, 1]))
+        WX1 = tf.Variable(xavier_init([5,5,3,64]))
+        WX2 = tf.Variable(xavier_init([5,5,64,128]))
+        WX3 = tf.Variable(xavier_init([5,5,128,256]))
+        WX4 = tf.Variable(xavier_init([5,5,256,512]))
+        WX5 = tf.Variable(xavier_init([4*4*512, 1]))
         bX5 = tf.Variable(tf.zeros(shape=[1]))
         var_DX = [WX1,WX2,WX3,WX4,WX5,bX5] 
         
@@ -77,23 +77,18 @@ with graph.as_default():
         DX_fake_logits = X_discriminator(G_sample, var_DX)
         
         global_step = tf.Variable(0, name="global_step", trainable=False)
-        dp_epsilon = 0.1
         A_loss = laploss(A_true_flat,A_sample)
-        #A_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-        Z_loss = laploss(A_true_flat,G_sample)
-        opt_loss = 0.1*A_loss -0.1*Z_loss
         A_D_loss = laploss(A_true_flat, re_true)
-        #A_D_loss = tf.reduce_mean(tf.pow(A_true_flat - re_true,2))
         gp_x = X_gradient_penalty(G_sample,A_true_flat, var_DX, mb_size)
         gp_z = Z_gradient_penalty(G_sample,A_true_flat, mb_size,input_shape, n_filters, filter_sizes,last_layer, G_sample, var_DZ, reuse = True)
         
         D_Z_loss = tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DZ_real_logits) + 10.0*gp_x
         D_X_loss = tf.reduce_mean(DX_fake_logits) - tf.reduce_mean(DX_real_logits) + 10.0*gp_z
         
-        D_penalty = tf.abs(tf.abs(D_X_loss - D_Z_loss) - dp_epsilon)
+        G_penalty = tf.abs(D_X_loss - D_Z_loss)
         
-        G_loss = -tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits) + opt_loss
-        D_loss = D_Z_loss + D_X_loss + D_penalty + 0.1*A_D_loss
+        G_loss = -tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits)+ G_penalty + A_loss
+        D_loss = D_Z_loss + D_X_loss + A_D_loss
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('G_sample',G_sample)
@@ -101,11 +96,11 @@ with graph.as_default():
         tf.summary.image('D_sample',re_true)
         tf.summary.scalar('D_Z_loss', D_Z_loss)
         tf.summary.scalar('D_X_loss', D_X_loss)
-        tf.summary.scalar('D_Penalty',D_penalty)
+        tf.summary.scalar('DP_epsilon',G_penalty)
         tf.summary.scalar('G_loss',- tf.reduce_mean(DZ_fake_logits) - tf.reduce_mean(DX_fake_logits))   
         tf.summary.scalar('A_G_opt_loss',A_loss)
         tf.summary.scalar('A_D_opt_loss',A_D_loss)
-        tf.summary.scalar('Z_opt_loss',Z_loss)
+        #tf.summary.scalar('Z_opt_loss',Z_loss)
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1

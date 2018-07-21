@@ -104,21 +104,27 @@ def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer,x, theta_A,
                 idx+=1
             encoder.append(W)
             conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
-            conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            conv = tf.contrib.layers.layer_norm(conv)
             output = tf.nn.leaky_relu(conv)
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
         z = current_input
         for layer_i, shape in enumerate(shapes_enc):
-            W = encoder[layer_i]         
+            W_enc = encoder[layer_i]    
+            if reuse == False:
+                W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
+                theta_A.append(W)
+            else:
+                W = theta_A[idx]
+                idx+=1            
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
             if layer_i == last_layer:
                 output = tf.nn.sigmoid(deconv)
             else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                deconv = tf.contrib.layers.layer_norm(deconv)
                 output = tf.nn.relu(deconv)
             current_input = output
         g = current_input
