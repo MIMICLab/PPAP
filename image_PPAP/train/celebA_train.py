@@ -30,7 +30,7 @@ def plot(samples):
         plt.imshow(sample.reshape(64, 64,3), cmap='Greys_r')
 
     return fig
-mb_size = 128
+mb_size = 64
 X_dim = 4096
 download_celeb_a("../data")
 data_files = glob(os.path.join("../data/celebA/*.jpg"))
@@ -80,8 +80,8 @@ with graph.as_default():
         dp_epsilon = 0.1
         A_loss = laploss(A_true_flat,A_sample)
         #A_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-        Z_loss = tf.reduce_mean(tf.pow(z_true - z_fake,2))
-        opt_loss = 0.1*A_loss -10.0*Z_loss
+        Z_loss = laploss(A_true_flat,G_sample)
+        opt_loss = 0.1*A_loss -0.1*Z_loss
         A_D_loss = laploss(A_true_flat, re_true)
         #A_D_loss = tf.reduce_mean(tf.pow(A_true_flat - re_true,2))
         gp_x = X_gradient_penalty(G_sample,A_true_flat, var_DX, mb_size)
