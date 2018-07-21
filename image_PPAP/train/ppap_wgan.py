@@ -133,7 +133,7 @@ def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, 
             W_enc = encoder[layer_i]
             if reuse == False:
                 W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
-                theta_A.append(W_fc)
+                theta_A.append(W)
             else:
                 W = theta_A[idx]
                 idx+=1                
