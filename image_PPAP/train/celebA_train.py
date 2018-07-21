@@ -105,8 +105,8 @@ with graph.as_default():
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
        
-        D_solver = tf.train.AdamOptimizer(learning_rate=5e-5,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_DX+var_DZ, global_step=global_step)
-        G_solver = tf.train.AdamOptimizer(learning_rate=5e-5,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
+        D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_DX+var_DZ, global_step=global_step)
+        G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
         
         timestamp = str(int(time.time()))
         out_dir = os.path.abspath(os.path.join(os.path.curdir, "../results/models/celebA" + timestamp))
