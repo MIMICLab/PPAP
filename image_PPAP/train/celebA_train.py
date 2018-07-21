@@ -50,7 +50,7 @@ with graph.as_default():
         #input placeholder
         X = tf.placeholder(tf.float32, shape=[None,64,64,3])
         A_true_flat = X 
-        z_dim = 128      
+        z_dim = 1024      
         #autoencoder variables
         var_G = []
         var_A = []
@@ -135,7 +135,7 @@ with graph.as_default():
             for _ in range(5):
                 X_mb = next_batch(mb_size, x_train)
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})          
-            _, A_loss_curr = sess.run([A_solver, A_D_loss],feed_dict={X: X_mb})    
+                _, A_loss_curr = sess.run([A_solver, A_D_loss],feed_dict={X: X_mb})    
             summary, _, G_loss_curr = sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
