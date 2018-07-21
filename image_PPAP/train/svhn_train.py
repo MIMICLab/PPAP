@@ -76,9 +76,7 @@ with graph.as_default():
         bX4 = tf.Variable(tf.zeros(shape=[1]))
         var_DX = [WX1,WX2,WX3,WX4,bX4]  
         
-        WZ = tf.Variable(xavier_init([z_dim,1]))
-        bZ = tf.Variable(tf.zeros(shape=[1]))
-        var_DZ = [WZ,bZ]
+        var_DZ = []
         
         G_sample, A_sample = generator(input_shape, n_filters, filter_sizes, last_layer, A_true_flat, var_G)
         re_true, z_true, DZ_real_logits  = Z_discriminator(input_shape, n_filters, filter_sizes,last_layer,A_true_flat, var_DZ)
