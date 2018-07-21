@@ -85,7 +85,7 @@ def generator(input_shape, n_filters, filter_sizes, last_layer, x, theta_G, reus
 
     return g, a
 
-def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, theta_A, theta_DZ, reuse=False):
+def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer,x, theta_A, reuse=False):
     current_input = x    
     encoder = []
     decoder = []
@@ -109,35 +109,9 @@ def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, 
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
-        if reuse == False:
-            W_fc = tf.Variable(tf.random_normal([4*4*n_filters[-1], z_dim]))
-            theta_A.append(W_fc)
-        else:
-            W_fc = theta_A[idx]
-            idx+=1
-        z = tf.matmul(tf.layers.flatten(current_input),W_fc)
-        z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
-        z_value = z
-        if reuse == False:
-            W_fc2 = tf.Variable(tf.random_normal([z_dim,4*4*n_filters[-1]]))
-            theta_A.append(W_fc2)
-        else:
-            W_fc2 = theta_A[idx]
-            idx+=1        
-        z_ = tf.matmul(z,W_fc2)
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])
+        z = current_input
         for layer_i, shape in enumerate(shapes_enc):
-            W_enc = encoder[layer_i]
-            if reuse == False:
-                W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
-                theta_A.append(W)
-            else:
-                W = theta_A[idx]
-                idx+=1                
-            shapes_dec.append(current_input.get_shape().as_list())
+            W = encoder[layer_i]         
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
@@ -148,9 +122,31 @@ def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, 
                 output = tf.nn.relu(deconv)
             current_input = output
         g = current_input
-        h = z_value
-        d = tf.nn.xw_plus_b(h,theta_DZ[0],theta_DZ[1])
-        return g, z_value, d
+        z_flat = tf.layers.flatten(z)
+        if reuse ==False:
+            W = tf.Variable(tf.random_normal([4*4*n_filters[-1],4*4*n_filters[-1]]))
+            b = tf.Variable(tf.zeros(shape=[4*4*n_filters[-1]]))
+            theta_A.append(W)
+            theta_A.append(b)
+        else:
+            W = theta_A[idx]
+            idx+=1
+            b = theta_A[idx]
+            idx+=1
+        h = tf.nn.xw_plus_b(z_flat,W,b)
+        h = tf.nn.leaky_relu(h)
+        if reuse ==False:
+            W = tf.Variable(tf.random_normal([4*4*n_filters[-1],1]))
+            b = tf.Variable(tf.zeros(shape=[1]))
+            theta_A.append(W)
+            theta_A.append(b)
+        else:
+            W = theta_A[idx]
+            idx+=1
+            b = theta_A[idx]
+            idx+=1
+        d = tf.nn.xw_plus_b(h,W,b)
+        return g, z, d
     
 def X_discriminator(x,var_D):
     current_input = x
@@ -212,10 +208,10 @@ def X_gradient_penalty(G_sample, A_true_flat, var_D, mb_size):
     gradient_penalty = tf.reduce_mean(tf.square(slopes - 1.))
     return gradient_penalty
 
-def Z_gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filter_sizes, last_layer, z_dim, x, theta_A, theta_DZ, reuse=True):
+def Z_gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filter_sizes, last_layer, x, theta_DZ, reuse=True):
     epsilon = tf.random_uniform(shape=[mb_size, 1, 1, 1], minval=0.,maxval=1.)
     X_hat = A_true_flat + epsilon * (G_sample - A_true_flat)
-    D_X_hat = Z_discriminator(input_shape, n_filters, filter_sizes,last_layer,z_dim, X_hat, theta_A, theta_DZ, reuse)
+    D_X_hat = Z_discriminator(input_shape, n_filters, filter_sizes,last_layer, X_hat, theta_DZ, reuse)
     grad_D_X_hat = tf.gradients(D_X_hat, [X_hat])[0]
     red_idx = list(range(1, X_hat.shape.ndims))
     slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_D_X_hat), reduction_indices=red_idx))
