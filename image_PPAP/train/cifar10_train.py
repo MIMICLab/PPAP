@@ -76,7 +76,7 @@ with graph.as_default():
         dp_epsilon = 0.1
         A_loss = laploss(A_true_flat,A_sample)
         Z_loss = tf.reduce_mean(tf.pow(z_true - z_fake,2))
-        opt_loss = 0.1*A_loss +10.0*Z_loss
+        opt_loss = 0.1*A_loss -10.0*Z_loss
         A_D_loss = laploss(A_true_flat, re_true)
         gp_x = X_gradient_penalty(G_sample,A_true_flat, var_DX, mb_size)
         gp_z = Z_gradient_penalty(G_sample,A_true_flat, mb_size,input_shape, n_filters, filter_sizes,2,z_dim, G_sample, var_A, var_DZ, reuse = True)
