@@ -154,19 +154,19 @@ with graph.as_default():
 
             if it % 1000 == 0: 
                 samples = sess.run(G_sample, feed_dict={X: X_mb})
-                samples_flat = tf.reshape(samples,[-1,X_dim]).eval()
+                samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 
                 samples = sess.run(A_sample, feed_dict={X: X_mb})
-                samples_flat = tf.reshape(samples,[-1,X_dim]).eval() 
+                samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval() 
                 img_set = np.append(img_set, samples_flat[:32], axis=0) 
 
                 samples = sess.run(re_true, feed_dict={X: X_mb})
-                samples_flat = tf.reshape(samples,[-1,X_dim]).eval() 
+                samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval() 
                 img_set = np.append(img_set, samples_flat[:32], axis=0) 
                 
                 samples = sess.run(re_fake, feed_dict={X: X_mb})
-                samples_flat = tf.reshape(samples,[-1,X_dim]).eval() 
+                samples_flat = tf.reshape(samples,[-1, 32, 32, 3]).eval() 
                 img_set = np.append(img_set, samples_flat[:32], axis=0)
                 
                 fig = plot(img_set)
