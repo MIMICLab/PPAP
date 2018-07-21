@@ -11,14 +11,14 @@ def xavier_init(size):
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
-def autoencoder(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, theta_G, reuse=False):
+def generator(input_shape, n_filters, filter_sizes, last_layer, x, theta_G, reuse=False):
     current_input = x    
     encoder = []
     decoder = []
     shapes_enc = []
     shapes_dec = []
     idx = 0
-    with tf.name_scope("Encoder"):
+    with tf.name_scope("G_Encoder"):
         for layer_i, n_output in enumerate(n_filters[1:]):
             n_input = current_input.get_shape().as_list()[3]
             shapes_enc.append(current_input.get_shape().as_list())
@@ -35,26 +35,6 @@ def autoencoder(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, thet
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
-        if reuse == False:
-            W_fc1 = tf.Variable(tf.random_normal([4*4*n_filters[-1], z_dim]))
-            theta_G.append(W_fc1)
-        else:
-            W_fc1 = theta_G[idx]
-            idx+=1
-        z = tf.matmul(tf.layers.flatten(current_input),W_fc1)
-        z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
-        z_value = z
-        if reuse == False:
-            W_fc2 = tf.Variable(tf.random_normal([z_dim, 4*4*n_filters[-1]]))
-            theta_G.append(W_fc2)
-        else:
-            W_fc2 = theta_G[idx]
-            idx+=1
-        z_ = tf.matmul(z,W_fc2)
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
             if reuse == False:
@@ -81,7 +61,7 @@ def autoencoder(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, thet
         decoder.reverse()
         shapes_dec.reverse()
         
-    with tf.name_scope("Decoder"):
+    with tf.name_scope("G_Decoder"):
         for layer_i, shape in enumerate(shapes_dec):
             W_dec = decoder[layer_i]
             conv = tf.nn.conv2d(current_input, W_dec, strides=[1, 2, 2, 1], padding='SAME')          
@@ -89,15 +69,7 @@ def autoencoder(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, thet
             output = tf.nn.leaky_relu(conv)
             current_input = output
         encoder.reverse()
-        shapes_enc.reverse() 
-        z = tf.matmul(tf.layers.flatten(current_input), tf.transpose(W_fc2))
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
-        z_transpose = z
-        z_ = tf.matmul(z, tf.transpose(W_fc1))
-        z_ =  tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])          
+        shapes_enc.reverse()         
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
             deconv = tf.nn.conv2d_transpose(current_input, W_enc,
@@ -111,8 +83,63 @@ def autoencoder(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, thet
             current_input = output
         a = current_input      
 
-    return g, a, z_value, z_transpose
+    return g, a
 
+def Z_discriminator(input_shape, n_filters, filter_sizes, last_layer, z_dim, x, theta_A, theta_DZ, reuse=False):
+    current_input = x    
+    encoder = []
+    decoder = []
+    shapes_enc = []
+    shapes_dec = []
+    idx = 0
+    with tf.name_scope("Encoder"):
+        for layer_i, n_output in enumerate(n_filters[1:]):
+            n_input = current_input.get_shape().as_list()[3]
+            shapes_enc.append(current_input.get_shape().as_list())
+            if reuse ==False:
+                W = tf.Variable(xavier_init([filter_sizes[layer_i],filter_sizes[layer_i],n_input, n_output]))
+                theta_A.append(W)
+            else:
+                W = theta_A[idx]
+                idx+=1
+            encoder.append(W)
+            conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
+            conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.leaky_relu(conv)
+            current_input = output
+        encoder.reverse()
+        shapes_enc.reverse()
+        if reuse == False:
+            W_fc = tf.Variable(tf.random_normal([4*4*n_filters[-1], z_dim]))
+            theta_A.append(W_fc)
+        else:
+            W_fc = theta_A[idx]
+            idx+=1
+        z = tf.matmul(tf.layers.flatten(current_input),W_fc)
+        z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z = tf.nn.tanh(z)
+        z_value = z
+        z_ = tf.matmul(z,tf.transpose(W_fc))
+        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z_ = tf.nn.relu(z_)
+        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])
+        for layer_i, shape in enumerate(shapes_enc):
+            W = encoder[layer_i]
+            shapes_dec.append(current_input.get_shape().as_list())
+            deconv = tf.nn.conv2d_transpose(current_input, W,
+                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
+                                     strides=[1, 2, 2, 1], padding='SAME')
+            if layer_i == last_layer:
+                output = tf.nn.sigmoid(deconv)
+            else:
+                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                output = tf.nn.relu(deconv)
+            current_input = output
+        g = current_input
+        h = z_value
+        d = tf.nn.xw_plus_b(h,theta_DZ[0],theta_DZ[1])
+        return g, z_value, d
+    
 def X_discriminator(x,var_D):
     current_input = x
     with tf.name_scope("X_Discriminator"):
@@ -122,16 +149,6 @@ def X_discriminator(x,var_D):
             current_input = tf.nn.leaky_relu(conv)            
         h = tf.layers.flatten(current_input)     
         d = tf.nn.xw_plus_b(h, var_D[-2], var_D[-1])        
-    return d
-
-def Z_discriminator(z,var_D, z_dim):
-    current_input = tf.reshape(z,[-1,z_dim])
-    with tf.name_scope("Z_Discriminator"):
-        for i in range(len(var_D)-2):
-            conv = tf.matmul(current_input,var_D[i])
-            conv = tf.contrib.layers.layer_norm(conv)
-            current_input = tf.nn.leaky_relu(conv)              
-        d = tf.nn.xw_plus_b(current_input, var_D[-2], var_D[-1])        
     return d
 
 def z_pyramid_loss(G_pyramid, A_pyramid, original):
@@ -183,10 +200,10 @@ def X_gradient_penalty(G_sample, A_true_flat, var_D, mb_size):
     gradient_penalty = tf.reduce_mean(tf.square(slopes - 1.))
     return gradient_penalty
 
-def Z_gradient_penalty(z_fake, z_true, var_D, mb_size, z_dim):
+def Z_gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filter_sizes, last_layer, z_dim, x, theta_A, theta_DZ, reuse=True):
     epsilon = tf.random_uniform(shape=[mb_size, 1, 1, 1], minval=0.,maxval=1.)
-    X_hat = z_true + epsilon * (z_fake - z_true)
-    D_X_hat = Z_discriminator(X_hat,var_D, z_dim)
+    X_hat = A_true_flat + epsilon * (G_sample - A_true_flat)
+    D_X_hat = Z_discriminator(input_shape, n_filters, filter_sizes,last_layer,z_dim, X_hat, theta_A, theta_DZ, reuse)
     grad_D_X_hat = tf.gradients(D_X_hat, [X_hat])[0]
     red_idx = list(range(1, X_hat.shape.ndims))
     slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_D_X_hat), reduction_indices=red_idx))
