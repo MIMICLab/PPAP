@@ -48,7 +48,7 @@ with graph.as_default():
         D_loss = tf.reduce_mean(D_fake_logits)-tf.reduce_mean(D_real_logits) +10.0*gp
         
         H_loss = 0.1*A_D_true_loss + 0.1*A_D_fake_loss
-        D_loss = D_loss + H_loss
+        D_total_loss = D_loss + H_loss
         G_loss = -tf.reduce_mean(D_fake_logits) + 0.1*A_G_loss - 0.1*A_D_fake_loss
         
         tf.summary.image('Original',A_true_flat)
@@ -56,7 +56,7 @@ with graph.as_default():
         tf.summary.image('A_sample',A_sample)
         tf.summary.image('D_true_sample',re_true)
         tf.summary.image('D_fake_sample',re_fake)
-        tf.summary.scalar('D_loss', -(tf.reduce_mean(D_fake_logits)-tf.reduce_mean(D_real_logits)))      
+        tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))   
         tf.summary.scalar('A_G_loss',A_G_loss)
         tf.summary.scalar('A_D_true_loss',A_D_true_loss)
@@ -65,7 +65,7 @@ with graph.as_default():
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
        
-        D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_D+var_H, global_step=global_step)
+        D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_total_loss,var_list=var_D+var_H, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
 
         timestamp = str(int(time.time()))
