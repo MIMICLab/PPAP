@@ -6,7 +6,7 @@ def xavier_init(size):
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
-def generator(input_shape, n_filters, filter_sizes, x, theta_G, reuse=False):
+def generator(input_shape, n_filters, filter_sizes, x, var_G, reuse=False):
     current_input = x    
     encoder = []
     decoder = []
@@ -19,9 +19,9 @@ def generator(input_shape, n_filters, filter_sizes, x, theta_G, reuse=False):
             shapes_enc.append(current_input.get_shape().as_list())
             if reuse ==False:
                 W = tf.Variable(xavier_init([filter_sizes[layer_i],filter_sizes[layer_i],n_input, n_output]))
-                theta_G.append(W)
+                var_G.append(W)
             else:
-                W = theta_G[idx]
+                W = var_G[idx]
                 idx+=1
             encoder.append(W)
             conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
@@ -34,9 +34,9 @@ def generator(input_shape, n_filters, filter_sizes, x, theta_G, reuse=False):
             W_enc = encoder[layer_i]
             if reuse == False:
                 W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
-                theta_G.append(W)
+                var_G.append(W)
             else:
-                W = theta_G[idx]
+                W = var_G[idx]
                 idx+=1
             decoder.append(W)
             shapes_dec.append(current_input.get_shape().as_list())
@@ -80,22 +80,64 @@ def generator(input_shape, n_filters, filter_sizes, x, theta_G, reuse=False):
 
     return g, a
 
-def discriminator(input_shape, n_filters, filter_sizes, x, theta_A, reuse=False):
+def discriminator(input_shape, n_filters, filter_sizes, x, var_D, reuse=False):
+    current_input = x    
+    idx = 0
+    with tf.name_scope("Discriminator"):
+        for layer_i, n_output in enumerate(n_filters[1:]):
+            n_input = current_input.get_shape().as_list()[3]
+            if reuse ==False:
+                W = tf.Variable(xavier_init([filter_sizes[layer_i],filter_sizes[layer_i],n_input, n_output]))
+                var_D.append(W)
+            else:
+                W = var_D[idx]
+                idx+=1
+            conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
+            conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.leaky_relu(conv)
+            current_input = output
+
+        z_flat = tf.layers.flatten(current_input)
+        z_flat_dim = int(z_flat.get_shape()[1])
+        if reuse ==False:
+            W = tf.Variable(tf.random_normal([z_flat_dim,1]))
+            b = tf.Variable(tf.zeros(shape=[1]))
+            var_D.append(W)
+            var_D.append(b)
+        else:
+            W = var_D[idx]
+            idx+=1
+            b = var_D[idx]
+            idx+=1
+        d = tf.nn.xw_plus_b(z_flat,W,b)
+    return d
+
+def gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filter_sizes, var_D, reuse=True):
+    epsilon = tf.random_uniform(shape=[mb_size, 1, 1, 1], minval=0.,maxval=1.)
+    X_hat = A_true_flat + epsilon * (G_sample - A_true_flat)
+    D_X_hat = discriminator(input_shape, n_filters, filter_sizes, X_hat,var_D, reuse)
+    grad_D_X_hat = tf.gradients(D_X_hat, [X_hat])[0]
+    red_idx = list(range(1, X_hat.shape.ndims))
+    slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_D_X_hat), reduction_indices=red_idx))
+    gradient_penalty = tf.reduce_mean(tf.square(slopes - 1.))
+    return gradient_penalty 
+
+def hacker(input_shape, n_filters, filter_sizes, x, var_H, reuse=False):
     current_input = x    
     encoder = []
     decoder = []
     shapes_enc = []
     shapes_dec = []
     idx = 0
-    with tf.name_scope("Encoder"):
+    with tf.name_scope("Hacker"):
         for layer_i, n_output in enumerate(n_filters[1:]):
             n_input = current_input.get_shape().as_list()[3]
             shapes_enc.append(current_input.get_shape().as_list())
             if reuse ==False:
                 W = tf.Variable(xavier_init([filter_sizes[layer_i],filter_sizes[layer_i],n_input, n_output]))
-                theta_A.append(W)
+                var_H.append(W)
             else:
-                W = theta_A[idx]
+                W = var_H[idx]
                 idx+=1
             encoder.append(W)
             conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
@@ -109,9 +151,9 @@ def discriminator(input_shape, n_filters, filter_sizes, x, theta_A, reuse=False)
             W_enc = encoder[layer_i]    
             if reuse == False:
                 W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
-                theta_A.append(W)
+                var_H.append(W)
             else:
-                W = theta_A[idx]
+                W = var_H[idx]
                 idx+=1            
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
@@ -123,26 +165,6 @@ def discriminator(input_shape, n_filters, filter_sizes, x, theta_A, reuse=False)
                 output = tf.nn.relu(deconv)
             current_input = output
         reconstructed = current_input
-        z_flat = tf.layers.flatten(z)
-        z_flat_dim = int(z_flat.get_shape()[1])
-        if reuse ==False:
-            W = tf.Variable(tf.random_normal([z_flat_dim,z_flat_dim]))
-            theta_A.append(W)
-        else:
-            W = theta_A[idx]
-            idx+=1
-        h = tf.matmul(z_flat,W)
-        h = tf.contrib.layers.batch_norm(h,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        h = tf.nn.leaky_relu(h)
-        if reuse ==False:
-            W = tf.Variable(tf.random_normal([z_flat_dim,1]))
-            b = tf.Variable(tf.zeros(shape=[1]))
-            theta_A.append(W)
-            theta_A.append(b)
-        else:
-            W = theta_A[idx]
-            idx+=1
-            b = theta_A[idx]
-            idx+=1
-        d = tf.nn.xw_plus_b(h,W,b)
-        return reconstructed, d    
+
+    return reconstructed
+
