@@ -56,7 +56,7 @@ with graph.as_default():
         tf.summary.image('A_sample',A_sample)
         tf.summary.image('D_true_sample',re_true)
         tf.summary.image('D_fake_sample',re_fake)
-        tf.summary.scalar('D_loss', -D_loss)      
+        tf.summary.scalar('D_loss', -(tf.reduce_mean(D_fake_logits)-tf.reduce_mean(D_real_logits)))      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))   
         tf.summary.scalar('A_G_loss',A_G_loss)
         tf.summary.scalar('A_D_true_loss',A_D_true_loss)
