@@ -122,14 +122,14 @@ def gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filt
     gradient_penalty = tf.reduce_mean(tf.square(slopes - 1.))
     return gradient_penalty 
 
-def hacker(input_shape, n_filters, filter_sizes, x, var_H, reuse=False):
+def hacker(input_shape, n_filters, filter_sizes, x, a, var_H, reuse=False):
     current_input = x    
     encoder = []
     decoder = []
     shapes_enc = []
     shapes_dec = []
     idx = 0
-    with tf.name_scope("Hacker"):
+    with tf.name_scope("H_decoder"):
         for layer_i, n_output in enumerate(n_filters[1:]):
             n_input = current_input.get_shape().as_list()[3]
             shapes_enc.append(current_input.get_shape().as_list())
@@ -146,15 +146,16 @@ def hacker(input_shape, n_filters, filter_sizes, x, var_H, reuse=False):
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
-        z = current_input
         for layer_i, shape in enumerate(shapes_enc):
-            W_enc = encoder[layer_i]    
+            W_enc = encoder[layer_i]
             if reuse == False:
                 W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
                 var_H.append(W)
             else:
                 W = var_H[idx]
-                idx+=1            
+                idx+=1
+            decoder.append(W)
+            shapes_dec.append(current_input.get_shape().as_list())
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
@@ -164,7 +165,34 @@ def hacker(input_shape, n_filters, filter_sizes, x, var_H, reuse=False):
                 deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
                 output = tf.nn.relu(deconv)
             current_input = output
-        reconstructed = current_input
-
-    return reconstructed
+        decoded_image = current_input
+    
+    encoder.reverse()
+    shapes_enc.reverse()
+    decoder.reverse()
+    shapes_dec.reverse()
+                
+    current_input = a    
+    with tf.name_scope("H_encoder"):
+        for layer_i, shape in enumerate(shapes_dec):
+            W_dec = decoder[layer_i]
+            conv = tf.nn.conv2d(current_input, W_dec, strides=[1, 2, 2, 1], padding='SAME')          
+            conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.leaky_relu(conv)
+            current_input = output
+        encoder.reverse()
+        shapes_enc.reverse()         
+        for layer_i, shape in enumerate(shapes_enc):
+            W_enc = encoder[layer_i]
+            deconv = tf.nn.conv2d_transpose(current_input, W_enc,
+                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
+                                     strides=[1, 2, 2, 1], padding='SAME')
+            if layer_i == 3:
+                output = tf.nn.sigmoid(deconv)
+            else:
+                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                output = tf.nn.relu(deconv)
+            current_input = output
+        encoded_image = current_input 
+    return decoded_image, encoded_image
 

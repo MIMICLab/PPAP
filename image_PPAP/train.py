@@ -36,26 +36,25 @@ with graph.as_default():
         G_sample, A_sample = generator(input_shape, n_filters, filter_sizes,A_true_flat, var_G)
         D_real_logits = discriminator(input_shape, n_filters, filter_sizes, A_true_flat, var_D)
         D_fake_logits = discriminator(input_shape, n_filters, filter_sizes, G_sample, var_D, reuse = True)
-        re_true = hacker(input_shape, n_filters, filter_sizes, A_true_flat, var_H)
-        re_fake = hacker(input_shape, n_filters, filter_sizes, G_sample, var_H, reuse = True)
+        decoded_fake, encoded_true = hacker(input_shape, n_filters, filter_sizes, G_sample, A_true_flat, var_H)
         
         global_step = tf.Variable(0, name="global_step", trainable=False)
         A_G_loss = laploss(A_true_flat,A_sample)
-        A_D_true_loss = laploss(A_true_flat, re_true)
-        A_D_fake_loss = laploss(A_true_flat, re_fake)   
+        A_D_true_loss = laploss(G_sample, encoded_true)
+        A_D_fake_loss = laploss(A_true_flat, decoded_fake)   
         
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filter_sizes, var_D, reuse=True)
         D_loss = tf.reduce_mean(D_fake_logits)-tf.reduce_mean(D_real_logits) +10.0*gp
         
         H_loss = 0.1*A_D_true_loss + 0.1*A_D_fake_loss
         D_total_loss = D_loss + H_loss
-        G_loss = -tf.reduce_mean(D_fake_logits) + 0.1*A_G_loss - 0.1*A_D_fake_loss
+        G_loss = -tf.reduce_mean(D_fake_logits) + 0.1*A_G_loss - H_loss
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('G_sample',G_sample)
         tf.summary.image('A_sample',A_sample)
-        tf.summary.image('D_true_sample',re_true)
-        tf.summary.image('D_fake_sample',re_fake)
+        tf.summary.image('encoded_true', encoded_true)
+        tf.summary.image('decoded_fake',decoded_fake)
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))   
         tf.summary.scalar('A_G_loss',A_G_loss)
@@ -103,7 +102,7 @@ with graph.as_default():
                 print('Iter: {}; D_loss: {:.4}; G_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr))
 
             if it % 1000 == 0: 
-                G_sample_curr,A_sample_curr,re_true_curr,re_fake_curr = sess.run([G_sample,A_sample,re_true,re_fake], feed_dict={X: X_mb})
+                G_sample_curr,A_sample_curr,re_true_curr,re_fake_curr = sess.run([G_sample,A_sample,decoded_fake, encoded_true], feed_dict={X: X_mb})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
