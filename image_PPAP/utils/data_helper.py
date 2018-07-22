@@ -63,10 +63,10 @@ def data_loader(dataset):
         X_dim = 4096
         width = 64
         height = 64
-        channels = 3  
-        len_x_train = len(data_files)    
+        channels = 3     
         download_celeb_a("data")
         data_files = glob(os.path.join("data/celebA/*.jpg"))
+        len_x_train = len(data_files)         
         sample = [get_image(sample_file, 108, True, 64, is_grayscale = 0) for sample_file in data_files]
         sample_images = np.array(sample).astype(np.float32)  
         x_train = normalize(sample_images)
