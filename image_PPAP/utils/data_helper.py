@@ -19,7 +19,7 @@ def data_loader(dataset):
         height = 28
         channels = 1
         len_x_train = 60000
-        x_train = input_data.read_data_sets('../data/MNIST_data', one_hot=True)
+        x_train = input_data.read_data_sets('data/MNIST_data', one_hot=True)
 
     if dataset == 'svhn':
         mb_size = 256
@@ -29,8 +29,8 @@ def data_loader(dataset):
         channels = 3    
         len_x_train = 604388
         #len_x_train = 73257
-        train_location = '../data/SVHN/train_32x32.mat'
-        extra_location = '../data/SVHN/extra_32x32.mat'
+        train_location = 'data/SVHN/train_32x32.mat'
+        extra_location = 'data/SVHN/extra_32x32.mat'
 
         train_dict = sio.loadmat(train_location)
         x_ = np.asarray(train_dict['X'])
@@ -65,8 +65,8 @@ def data_loader(dataset):
         height = 64
         channels = 3  
         len_x_train = len(data_files)    
-        download_celeb_a("../data")
-        data_files = glob(os.path.join("../data/celebA/*.jpg"))
+        download_celeb_a("data")
+        data_files = glob(os.path.join("data/celebA/*.jpg"))
         sample = [get_image(sample_file, 108, True, 64, is_grayscale = 0) for sample_file in data_files]
         sample_images = np.array(sample).astype(np.float32)  
         x_train = normalize(sample_images)
