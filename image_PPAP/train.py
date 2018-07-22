@@ -46,9 +46,9 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,input_shape, n_filters, filter_sizes, var_D, reuse=True)
         D_loss = tf.reduce_mean(D_fake_logits)-tf.reduce_mean(D_real_logits) +10.0*gp
         
-        H_loss = 0.1*A_D_true_loss + 0.1*A_D_fake_loss
+        H_loss = 0.01*A_D_true_loss + 0.01*A_D_fake_loss
         D_total_loss = D_loss + H_loss
-        G_loss = -tf.reduce_mean(D_fake_logits) + 0.1*A_G_loss - H_loss
+        G_loss = -tf.reduce_mean(D_fake_logits) + 0.01*A_G_loss - H_loss
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('G_sample',G_sample)
