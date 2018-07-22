@@ -22,7 +22,7 @@ with graph.as_default():
         #input placeholder
         input_shape=[None, width, height, channels]
         hidden = 128
-        n_filters=[channels, hidden, hidden*2, hidden*3, hidden*4]
+        n_filters=[channels, hidden, hidden*2, hidden*4, hidden*8]
         filter_sizes=[5, 5, 5, 5, 5]
   
         X = tf.placeholder(tf.float32, shape=[None, width, height,channels])
