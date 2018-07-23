@@ -13,7 +13,7 @@ from utils.download import download_celeb_a
 
 def data_loader(dataset):
     if dataset == 'mnist':
-        mb_size = 512
+        mb_size = 256
         X_dim = 784
         width = 28
         height = 28
