@@ -13,7 +13,7 @@ from utils.download import download_celeb_a
 
 def data_loader(dataset):
     if dataset == 'mnist':
-        mb_size = 256
+        mb_size = 512
         X_dim = 784
         width = 28
         height = 28
@@ -70,4 +70,6 @@ def data_loader(dataset):
         sample = [get_image(sample_file, 108, True, 64, is_grayscale = 0) for sample_file in data_files]
         sample_images = np.array(sample).astype(np.float32)  
         x_train = normalize(sample_images)
+        
+        
     return mb_size, X_dim, width, height, channels,len_x_train, x_train
