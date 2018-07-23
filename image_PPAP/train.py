@@ -68,9 +68,9 @@ with graph.as_default():
 
         A_G_loss = 0.01*laploss(A_true_flat,A_sample)
         A_H_loss = 0.01*laploss(A_sample, A_hacked)
-        Z_G_loss = 10.0*tf.reduce_mean(tf.pow(G_z - G_z_trans,2)) 
+        Z_G_loss = 0.0001*tf.reduce_mean(tf.pow(G_z - G_z_trans,2)) 
         
-        Z_diff = 10.0*tf.reduce_mean(tf.pow(G_z_trans - z_hacked,2))
+        Z_diff = 0.0001*tf.reduce_mean(tf.pow(G_z_trans - z_hacked,2))
 
         G_loss = -tf.reduce_mean(D_fake_logits) + A_G_loss + Z_G_loss - Z_diff
         H_loss = A_H_loss + Z_diff
@@ -85,6 +85,8 @@ with graph.as_default():
         tf.summary.scalar('A_H_loss',A_H_loss)  
         tf.summary.scalar('Z_G_loss',Z_G_loss)
         tf.summary.scalar('Z_diff',Z_diff)
+        tf.summary.histogram('G_z',G_z)
+        tf.summary.histogram('G_sample',G_sample)
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1

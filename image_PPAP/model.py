@@ -35,14 +35,14 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
         W_fc1 = tf.Variable(tf.random_normal([z_flat_dim, z_dim]))
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
-        z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
+        #z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z = tf.nn.tanh(z)
         z_value = z
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2)
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.elu(z_)
+        #z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z_ = tf.nn.elu(z_)
         current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])        
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
@@ -57,11 +57,11 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
+           # if layer_i == len(n_filters)-2:
+           #     output = tf.nn.sigmoid(deconv)
+           # else:
+            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.relu(deconv)
             current_input = output
         g = current_input
         
@@ -80,23 +80,23 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
         encoder.reverse()
         shapes_enc.reverse()
         z = tf.matmul(tf.layers.flatten(current_input), tf.transpose(W_fc2))
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
+        #z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z = tf.nn.tanh(z)
         z_transpose = z
         z_ = tf.matmul(z, tf.transpose(W_fc1))
-        z_ =  tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.elu(z_)
+        #z_ =  tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z_ = tf.nn.elu(z_)
         current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])         
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
             deconv = tf.nn.conv2d_transpose(current_input, W_enc,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
+            #if layer_i == len(n_filters)-2:
+            #    output = tf.nn.sigmoid(deconv)
+            #else:
+            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.relu(deconv)
             current_input = output
         a = current_input      
 
@@ -131,14 +131,14 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
         W_fc1 = tf.Variable(tf.random_normal([z_flat_dim, z_dim]))
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
-        z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
+        #z =  tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z = tf.nn.tanh(z)
         z_value = z
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2)
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.elu(z_)
+        #z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z_ = tf.nn.relu(z_)
         current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])        
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
@@ -153,11 +153,11 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
+            #if layer_i == len(n_filters)-2:
+            #    output = tf.nn.sigmoid(deconv)
+            #else:
+            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.relu(deconv)
             current_input = output
         a = current_input
         
