@@ -67,7 +67,7 @@ with graph.as_default():
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
 
         A_G_loss = 0.01*laploss(A_true_flat,A_sample)
-        A_H_loss = 0.01*laploss(A_sample, A_hacked)
+        A_H_loss = 0.01*laploss(A_true_flat, A_hacked)
         Z_G_loss = 0.001*tf.reduce_mean(tf.pow(G_z - G_z_trans,2)) 
         
         Z_diff = 0.001*tf.reduce_mean(tf.pow(G_z_trans - z_hacked,2))
