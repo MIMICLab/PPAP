@@ -22,8 +22,8 @@ def next_batch(num, data, shuffle=True):
     return np.asarray(data_shuffle)
 
 def plot(samples, width, height, channels):
-    fig = plt.figure(figsize=(32,5))
-    gs = gridspec.GridSpec(5,32)
+    fig = plt.figure(figsize=(32,4))
+    gs = gridspec.GridSpec(4,32)
     gs.update(wspace=0.05, hspace=0.05)
         
     for i, sample in enumerate(samples):
