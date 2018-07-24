@@ -133,11 +133,11 @@ with graph.as_default():
             if it % 1000 == 0: 
                 G_sample_curr,A_sample_curr,re_true_curr = sess.run([G_sample,A_sample, A_hacked], feed_dict={X: X_mb})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
-                img_set = np.append(X_mb[:32], normalize(samples_flat[:32]), axis=0)
+                img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, normalize(samples_flat[:32]), axis=0) 
+                img_set = np.append(img_set, samples_flat[:32], axis=0) 
                 samples_flat = tf.reshape(re_true_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set,normalize(samples_flat[:32]), axis=0) 
+                img_set = np.append(img_set, samples_flat[:32], axis=0) 
                 
                 fig = plot(img_set, width, height, channels)
                 plt.savefig('results/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
