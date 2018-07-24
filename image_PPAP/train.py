@@ -66,18 +66,18 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
         
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
-        G_opt_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-        H_opt_loss = tf.reduce_mean(tf.pow(G_sample - A_hacked, 2))
+        privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
+        G_opt_loss = 0.01*laploss(A_true_flat, A_sample)
+        H_opt_loss = 0.01*laploss(G_sample, A_hacked)
 
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss 
         H_loss =  privacy_gain + H_opt_loss
         
         tf.summary.image('Original',A_true_flat)
-        tf.summary.image('G_sample',G_sample)
-        tf.summary.image('A_sample',A_sample)
-        tf.summary.image('G_hacked',G_hacked)
-        tf.summary.image('A_hacked',A_hacked)        
+        tf.summary.image('fake',G_sample)
+        tf.summary.image('reconstructed_true',A_sample)
+        tf.summary.image('decoded_from_fake',G_hacked)
+        tf.summary.image('encoded_from_real',A_hacked)        
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))     
         tf.summary.scalar('privacy_gain', privacy_gain)
@@ -118,7 +118,8 @@ with graph.as_default():
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
                 else:
                     X_mb = next_batch(mb_size, x_train)
-                _, _, D_loss_curr, H_loss_curr = sess.run([D_solver, H_solver, D_loss, H_loss],feed_dict={X: X_mb})  
+                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})  
+            _, H_loss_curr = sess.run([H_solver,H_loss],feed_dict={X: X_mb})     
             summary, _, G_loss_curr = sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
