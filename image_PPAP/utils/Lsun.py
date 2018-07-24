@@ -92,7 +92,7 @@ class Lsun(object):
                         img = scipy.misc.imresize(img,(64,64))
                         img = img.astype(numpy.float32)
 
-                        img /= 225.
+                        img /= 255.
 
                         images.append(img)
 
