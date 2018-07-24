@@ -56,7 +56,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
             output = tf.nn.relu(deconv)
             current_input = output
-        g = current_input
+        g = tf.clip_by_value(current_input,0.0,1.0)  
         
         encoder.reverse()
         shapes_enc.reverse()
@@ -84,7 +84,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
             output = tf.nn.relu(deconv)
             current_input = output
-        a = current_input      
+        a = tf.clip_by_value(current_input,0.0,1.0)      
 
     return g, a, z_value, z_transpose
 
@@ -138,7 +138,7 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
             output = tf.nn.relu(deconv)
             current_input = output
-        a = current_input
+        a = tf.clip_by_value(current_input,0.0,1.0)  
         
     return a, z_value
 

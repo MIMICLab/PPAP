@@ -25,7 +25,6 @@ def plot(samples, width, height, channels):
     fig = plt.figure(figsize=(32,4))
     gs = gridspec.GridSpec(4,32)
     gs.update(wspace=0.05, hspace=0.05)
-    norm = plt.Normalize(0,1)
     for i, sample in enumerate(samples):
         ax = plt.subplot(gs[i])
         plt.axis('off')
@@ -33,9 +32,9 @@ def plot(samples, width, height, channels):
         ax.set_yticklabels([])
         ax.set_aspect('equal')
         if channels == 1:
-            plt.imshow(norm(sample.reshape(width, height)), cmap='Greys_r')
+            plt.imshow(sample.reshape(width, height), cmap='Greys_r')
         else:
-            plt.imshow(norm(sample.reshape(width, height,channels)))            
+            plt.imshow(sample.reshape(width, height,channels))           
     return fig
 
 def normalize(x):
