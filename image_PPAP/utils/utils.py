@@ -22,8 +22,8 @@ def next_batch(num, data, shuffle=True):
     return np.asarray(data_shuffle)
 
 def plot(samples, width, height, channels):
-    fig = plt.figure(figsize=(32,4))
-    gs = gridspec.GridSpec(4,32)
+    fig = plt.figure(figsize=(32,5))
+    gs = gridspec.GridSpec(5,32)
     gs.update(wspace=0.05, hspace=0.05)
     norm=plt.Normalize(0, 1)
     for i, sample in enumerate(samples):
@@ -106,7 +106,7 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
         cropped_image = center_crop(image, npx, resize_w=resize_w)
     else:
         cropped_image = image
-    return np.array(cropped_image)/255.
+    return np.array(cropped_image)/225.
 
 # def inverse_transform(images):
 #     return (images+1.)/2.
