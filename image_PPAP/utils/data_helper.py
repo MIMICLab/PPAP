@@ -46,7 +46,7 @@ def data_loader(dataset):
             x_extra.append(x_ex[:,:,:,i])
         x_extra = np.asarray(x_extra)
         x_train = np.concatenate((x_train, x_extra), axis=0)
-        x_train = normalize(x_train)
+        #x_train = normalize(x_train)
 
     if dataset == 'cifar10':
         mb_size = 256
@@ -56,7 +56,7 @@ def data_loader(dataset):
         height = 32
         channels = 3    
         (x_train, y_train), (x_test, y_test) = load_data()
-        x_train = normalize(x_train)
+        #x_train = normalize(x_train)
 
     if dataset == 'celebA':
         mb_size = 128
@@ -69,7 +69,7 @@ def data_loader(dataset):
         len_x_train = len(data_files)         
         sample = [get_image(sample_file, 108, True, 64, is_grayscale = 0) for sample_file in data_files]
         sample_images = np.array(sample).astype(np.float32)  
-        x_train = normalize(sample_images)
+        #x_train = normalize(sample_images)
         
         
     return mb_size, X_dim, width, height, channels,len_x_train, x_train
