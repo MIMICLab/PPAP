@@ -53,12 +53,10 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
+            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.relu(deconv)
             current_input = output
+        current_input = tf.minimum(current_input,1)
         g = current_input
         
         encoder.reverse()
@@ -84,12 +82,11 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.nn.conv2d_transpose(current_input, W_enc,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
+
+            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.relu(deconv)
             current_input = output
+        current_input = tf.minimum(current_input,1)    
         a = current_input
     return g, a, z_value, z_transpose
 
@@ -140,12 +137,11 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
+
+            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.relu(deconv)
             current_input = output
+        current_input = tf.minimum(current_input,1)            
         a =  current_input
         
     return a, z_value
