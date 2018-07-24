@@ -9,7 +9,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.keras._impl.keras.datasets.cifar10 import load_data
 from glob import glob
 from random import shuffle
-from utils.download import download_celeb_a
+from utils.download import download_celeb_a, download_lsun
 from utils.Lsun import Lsun
 
 def data_loader(dataset):
@@ -72,14 +72,14 @@ def data_loader(dataset):
         sample_images = np.array(sample).astype(np.float32)
         x_train = sample_images
         
-    if dataset == 'Lsun':
+    if dataset == 'lsun':
         mb_size = 128
         X_dim = 4096
         width = 64
         height = 64
         channels = 3    
-        download_lsun("data/Lsun")
-        lsun = Lsun("data/Lsun/train")
+        download_lsun("data")
+        lsun = Lsun("data/lsun/train")
         len_x_train = 3033042          
         sample_images = lsun.next_batch(len_x_train)
         x_train = sample_images        

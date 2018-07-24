@@ -30,7 +30,7 @@ with graph.as_default():
         hidden = 128
         z_dim = 128   
         
-        if dataset == 'celebA':        
+        if dataset == 'celebA' or dataset == 'lsun':        
             n_filters=[channels, hidden, hidden*2, hidden*4, hidden*8]
         else:      
             n_filters=[channels, hidden, hidden*2, hidden*4]
@@ -45,7 +45,7 @@ with graph.as_default():
         W1 = tf.Variable(xavier_init([5,5,channels, hidden//2]))
         W2 = tf.Variable(xavier_init([5,5, hidden//2,hidden]))
         W3 = tf.Variable(xavier_init([5,5,hidden,hidden*2]))
-        if dataset == 'celebA':
+        if dataset == 'celebA' or dataset == 'lsun':
             W4 = tf.Variable(xavier_init([5,5,hidden*2,hidden*4]))
             W5 = tf.Variable(xavier_init([4*4*hidden*4, 1]))
             b5 = tf.Variable(tf.zeros(shape=[1]))

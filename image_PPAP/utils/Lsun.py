@@ -4,7 +4,7 @@ import numpy
 import os
 import pickle
 import scipy.misc
-import StringIO
+from io import StringIO
 
 
 class Lsun(object):
@@ -24,7 +24,7 @@ class Lsun(object):
             with open(path_keys, 'r') as kf:
                 return pickle.Unpickler(kf).load()
 
-        print 'generating keys of lmdb: ' + path_lsun_dir
+        print('generating keys of lmdb: ' + path_lsun_dir)
 
         keys = []
 
@@ -39,7 +39,7 @@ class Lsun(object):
                         keys.append(key)
 
                         if idx % 1000 == 0:
-                            print 'found keys: {} / {}'.format(idx, keys_count)
+                            print('found keys: {} / {}'.format(idx, keys_count))
 
         with open(path_keys, 'w') as kf:
             pickle.Pickler(kf).dump(keys)
