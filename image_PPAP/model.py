@@ -53,11 +53,13 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-            output = tf.nn.relu(deconv)
+            if layer_i == len(n_filters)-2:
+                output = tf.nn.sigmoid(deconv)
+            else:
+                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                output = tf.nn.elu(deconv)
             current_input = output
-        g = tf.clip_by_value(current_input,0.0,1.0)
-        current_input = g
+        g = current_input
         
         encoder.reverse()
         shapes_enc.reverse()
@@ -82,11 +84,13 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             deconv = tf.nn.conv2d_transpose(current_input, W_enc,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-            output = tf.nn.relu(deconv)
+            if layer_i == len(n_filters)-2:
+                output = tf.nn.sigmoid(deconv)
+            else:
+                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                output = tf.nn.elu(deconv)
             current_input = output
-        a = tf.clip_by_value(current_input,0.0,1.0)
-
+        a = current_input
     return g, a, z_value, z_transpose
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
@@ -136,10 +140,13 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
-            deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-            output = tf.nn.relu(deconv)
+            if layer_i == len(n_filters)-2:
+                output = tf.nn.sigmoid(deconv)
+            else:
+                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                output = tf.nn.elu(deconv)
             current_input = output
-        a =  tf.clip_by_value(current_input,0.0,1.0)
+        a =  current_input
         
     return a, z_value
 
@@ -149,7 +156,7 @@ def discriminator(x,var_D):
         for i in range(len(var_D)-2):
             conv = tf.nn.conv2d(current_input, var_D[i], strides=[1,2,2,1],padding='SAME')
             conv = tf.contrib.layers.layer_norm(conv)
-            current_input = tf.nn.leaky_relu(conv)            
+            current_input = tf.nn.elu(conv)            
         h = tf.layers.flatten(current_input)     
         d = tf.nn.xw_plus_b(h, var_D[-2], var_D[-1])        
     return d
