@@ -26,7 +26,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             encoder.append(W)
             conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
             conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-            output = tf.nn.elu(conv)
+            output = tf.nn.leaky_relu(conv)
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
@@ -57,7 +57,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
                 output = tf.nn.sigmoid(deconv)
             else:
                 deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.elu(deconv)
+                output = tf.nn.relu(deconv)
             current_input = output
         g = current_input
         
@@ -71,7 +71,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
             W_dec = decoder[layer_i]
             conv = tf.nn.conv2d(current_input, W_dec, strides=[1, 2, 2, 1], padding='SAME')          
             conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-            output = tf.nn.elu(conv)
+            output = tf.nn.leaky_relu(conv)
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
@@ -88,7 +88,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=Fals
                 output = tf.nn.sigmoid(deconv)
             else:
                 deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.elu(deconv)
+                output = tf.nn.relu(deconv)
             current_input = output
         a = current_input
     return g, a, z_value, z_transpose
@@ -113,7 +113,7 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             encoder.append(W)
             conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
             conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-            output = tf.nn.elu(conv)
+            output = tf.nn.leaky_relu(conv)
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()
@@ -144,7 +144,7 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
                 output = tf.nn.sigmoid(deconv)
             else:
                 deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.elu(deconv)
+                output = tf.nn.relu(deconv)
             current_input = output
         a =  current_input
         
@@ -156,7 +156,7 @@ def discriminator(x,var_D):
         for i in range(len(var_D)-2):
             conv = tf.nn.conv2d(current_input, var_D[i], strides=[1,2,2,1],padding='SAME')
             conv = tf.contrib.layers.layer_norm(conv)
-            current_input = tf.nn.elu(conv)            
+            current_input = tf.nn.leaky_relu(conv)            
         h = tf.layers.flatten(current_input)     
         d = tf.nn.xw_plus_b(h, var_D[-2], var_D[-1])        
     return d
