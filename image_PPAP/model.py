@@ -100,7 +100,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
                 output = tf.nn.relu(deconv)
             current_input = output
         a = current_input
-    return g, a, z_value, z_transpose, W_lambda
+    return g, a, z_value, z_transpose, W_lambda, W_noise
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    

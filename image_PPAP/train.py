@@ -58,7 +58,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample, z_true, z_trans, lambda_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
+        G_sample, A_sample, z_true, z_trans, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
@@ -83,7 +83,7 @@ with graph.as_default():
         tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
         tf.summary.scalar('G_opt_loss',G_opt_loss)
         tf.summary.histogram('lambda_layer',lambda_layer)
-        
+        tf.summary.histogram('noise_layer', noise_layer)        
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
