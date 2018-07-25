@@ -57,8 +57,8 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, var_G)
-        G_hacked, A_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample,  A_true_flat, var_H)
+        G_sample, A_sample, z_true, z_trans, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, var_G)
+        G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample,  A_true_flat, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
@@ -66,23 +66,21 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
         
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
-        G_opt_loss = 0.01*laploss(A_true_flat, A_sample)
-        H_opt_loss = 0.01*laploss(G_sample, A_hacked)
-
+        privacy_gain = 0.1*laploss(A_true_flat, G_hacked)
+        G_opt_loss = 0.1*laploss(A_true_flat, A_sample)
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss 
-        H_loss =  privacy_gain + H_opt_loss
+        H_loss =  privacy_gain
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
         tf.summary.image('reconstructed_true',A_sample)
         tf.summary.image('decoded_from_fake',G_hacked)
-        tf.summary.image('encoded_from_real',A_hacked)        
+       
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))     
         tf.summary.scalar('privacy_gain', privacy_gain)
         tf.summary.scalar('G_opt_loss',G_opt_loss)
-        tf.summary.scalar('H_opt_loss',G_opt_loss)
+        tf.summary.histogram('noise_layer',noise_layer)
         
         merged = tf.summary.merge_all()
 
@@ -128,16 +126,14 @@ with graph.as_default():
                 print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; H_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr))
 
             if it % 1000 == 0: 
-                G_sample_curr,A_sample_curr,re_fake_curr, re_true_curr = sess.run([G_sample,A_sample, G_hacked, A_hacked], feed_dict={X: X_mb})
+                G_sample_curr,A_sample_curr,re_fake_curr = sess.run([G_sample,A_sample, G_hacked], feed_dict={X: X_mb})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
                 img_set = np.append(img_set, samples_flat[:32], axis=0) 
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
                 img_set = np.append(img_set, samples_flat[:32], axis=0)                 
-                samples_flat = tf.reshape(re_true_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:32], axis=0) 
-                
+
                 fig = plot(img_set, width, height, channels)
                 plt.savefig('results/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
                 plt.close(fig)

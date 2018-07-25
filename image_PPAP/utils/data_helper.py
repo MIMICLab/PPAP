@@ -79,9 +79,9 @@ def data_loader(dataset):
         height = 64
         channels = 3    
         download_lsun("data")
-        lsun = Lsun("data/lsun/train")
-        len_x_train = 3033042          
-        sample_images = lsun.next_batch(len_x_train)
+        lsun = Lsun("data/lsun/bedroom_train_lmdb")
+        len_x_train = 3033042        
+        sample_images = lsun.load_data(len_x_train)
         x_train = sample_images        
         
     return mb_size, X_dim, width, height, channels,len_x_train, x_train

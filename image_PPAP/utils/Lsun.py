@@ -21,7 +21,7 @@ class Lsun(object):
         path_keys = os.path.join(path_lsun_dir, 'keys.pkl')
 
         if os.path.isfile(path_keys):
-            with open(path_keys, 'r') as kf:
+            with open(path_keys, 'rb') as kf:
                 return pickle.Unpickler(kf).load()
 
         print('generating keys of lmdb: ' + path_lsun_dir)
@@ -40,23 +40,45 @@ class Lsun(object):
 
                         if idx % 1000 == 0:
                             print('found keys: {} / {}'.format(idx, keys_count))
-
-        with open(path_keys, 'w') as kf:
+        
+        with open(path_keys, 'wb') as kf:
             pickle.Pickler(kf).dump(keys)
 
         return keys
 
     def __init__(self, path_lsun_dir):
-        """
-        """
+
         self._lmdb_path = path_lsun_dir
         self._lmdb_keys = Lsun.load_keys(path_lsun_dir)
-
+        print(len(self._lmdb_keys))
         self._key_indice = numpy.arange(len(self._lmdb_keys))
         self._key_position = 0
 
         numpy.random.shuffle(self._key_indice)
+        
+    def load_data(self,len_x_train):
+        begin = 0
+        end = len_x_train
 
+        images = []
+
+        with lmdb.open(self._lmdb_path) as env:
+            with env.begin(write=False) as txn:
+                with txn.cursor() as cursor:
+                    for i in range(begin, end):
+                        val = cursor.get(self._lmdb_keys[self._key_indice[i]])
+                        sio = StringIO.StringIO(val)
+
+                        img = scipy.misc.imread(sio)
+                        img = scipy.misc.imresize(img,(64,64))
+                        img = img.astype(numpy.float32)
+
+                        img /= 255.
+
+                        images.append(img)
+
+        return images
+    
     def next_batch(self, batch_size):
         """
         Get next batch_size images from the database.
@@ -83,7 +105,7 @@ class Lsun(object):
         with lmdb.open(self._lmdb_path) as env:
             with env.begin(write=False) as txn:
                 with txn.cursor() as cursor:
-                    for i in xrange(begin, end):
+                    for i in range(begin, end):
                         val = cursor.get(self._lmdb_keys[self._key_indice[i]])
 
                         sio = StringIO.StringIO(val)
