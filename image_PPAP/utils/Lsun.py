@@ -4,7 +4,7 @@ import numpy
 import os
 import pickle
 import scipy.misc
-from io import StringIO
+from io import BytesIO
 
 
 class Lsun(object):
@@ -50,7 +50,6 @@ class Lsun(object):
 
         self._lmdb_path = path_lsun_dir
         self._lmdb_keys = Lsun.load_keys(path_lsun_dir)
-        print(len(self._lmdb_keys))
         self._key_indice = numpy.arange(len(self._lmdb_keys))
         self._key_position = 0
 
@@ -67,7 +66,7 @@ class Lsun(object):
                 with txn.cursor() as cursor:
                     for i in range(begin, end):
                         val = cursor.get(self._lmdb_keys[self._key_indice[i]])
-                        sio = StringIO.StringIO(val)
+                        sio = BytesIO(val)
 
                         img = scipy.misc.imread(sio)
                         img = scipy.misc.imresize(img,(64,64))
