@@ -36,6 +36,7 @@ with graph.as_default():
             n_filters=[channels, hidden, hidden*2, hidden*4]
             
         X = tf.placeholder(tf.float32, shape=[None, width, height,channels])
+        Z_noise = tf.placeholder(tf.float32, shape=[None,  z_dim])
         A_true_flat = X
         
         #autoencoder variables
@@ -57,17 +58,17 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample, z_true, z_trans, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, var_G)
+        G_sample, A_sample, z_true, z_trans, lambda_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
         
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
-        
+        dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(2.0,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = 0.1*laploss(A_true_flat, G_hacked)
-        G_opt_loss = 0.1*laploss(A_true_flat, A_sample)
+        privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
+        G_opt_loss = 0.01*laploss(A_true_flat, A_sample)
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss 
         H_loss =  privacy_gain
         
@@ -79,8 +80,9 @@ with graph.as_default():
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))     
         tf.summary.scalar('privacy_gain', privacy_gain)
+        tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
         tf.summary.scalar('G_opt_loss',G_opt_loss)
-        tf.summary.histogram('noise_layer',noise_layer)
+        tf.summary.histogram('lambda_layer',lambda_layer)
         
         merged = tf.summary.merge_all()
 
@@ -116,17 +118,19 @@ with graph.as_default():
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
                 else:
                     X_mb = next_batch(mb_size, x_train)
-                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb})  
-            _, H_loss_curr = sess.run([H_solver,H_loss],feed_dict={X: X_mb})     
-            summary, _, G_loss_curr = sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
+                    
+                enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
+                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb, Z_noise: enc_noise})  
+            _, H_loss_curr = sess.run([H_solver,H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})     
+            summary, _, G_loss_curr, dp_epsilon_curr = sess.run([merged,G_solver, G_loss, dp_epsilon],feed_dict={X: X_mb, Z_noise: enc_noise})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
             if it % 100 == 0:
-                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; H_loss: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr))
+                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; privacy_gain: {:.4}; epsilon_upper_bound: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr, dp_epsilon_curr))
 
             if it % 1000 == 0: 
-                G_sample_curr,A_sample_curr,re_fake_curr = sess.run([G_sample,A_sample, G_hacked], feed_dict={X: X_mb})
+                G_sample_curr,A_sample_curr,re_fake_curr = sess.run([G_sample,A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: enc_noise})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
@@ -148,7 +152,8 @@ with graph.as_default():
                         Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
                     else:
                         Xt_mb = next_batch(100, x_train)
-                    samples = sess.run(G_sample, feed_dict={X: Xt_mb})
+                    enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)    
+                    samples = sess.run(G_sample, feed_dict={X: Xt_mb, Z_noise: enc_noise})
                     if ii == 0:
                         generated = samples
                     else:
@@ -156,8 +161,13 @@ with graph.as_default():
                 np.save('results/generated_{}/generated_image.npy'.format(dataset), generated)
 
     for iii in range(len_x_train//100):
-        xt_mb, _ = mnist.train.next_batch(100,shuffle=False)
-        samples = sess.run(G_sample, feed_dict={X: xt_mb})
+        if dataset == 'mnist':
+            Xt_mb, _ = x_train.train.next_batch(100)
+            Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
+        else:
+            Xt_mb = next_batch(100, x_train)
+        enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
+        samples = sess.run(G_sample, feed_dict={X: xt_mb, Z_noise: enc_noise})
         if iii == 0:
             generated = samples
         else:

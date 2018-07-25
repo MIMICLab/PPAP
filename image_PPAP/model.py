@@ -6,7 +6,7 @@ def xavier_init(size):
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
-def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G):
+def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
     current_input = x    
     encoder = []
     decoder = []
@@ -35,8 +35,9 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G):
         z = tf.nn.tanh(z)
         z_value = z
         #add noise for DP
-        W_noise = tf.Variable(tf.random_normal([z_dim]))
-        var_G.append(W_noise)
+        W_lambda = tf.Variable(tf.random_normal([z_dim]))
+        var_G.append(W_lambda)
+        W_noise = tf.multiply(Y,W_lambda)
         z = tf.add(z,W_noise)
         
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
@@ -99,7 +100,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G):
                 output = tf.nn.relu(deconv)
             current_input = output
         a = current_input
-    return g, a, z_value, z_transpose, W_noise
+    return g, a, z_value, z_transpose, W_lambda
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    
