@@ -68,9 +68,9 @@ with graph.as_default():
         dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(2.0,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
         privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
-        G_opt_loss = 0.01*laploss(A_true_flat, A_sample) + 0.1*dp_epsilon
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
-        H_loss =  privacy_gain
+        G_opt_loss = 0.01*laploss(A_true_flat, A_sample)
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss + 0.1*dp_epsilon
+        H_loss =  privacy_gain - 0.1*dp_epsilon
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
