@@ -81,7 +81,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, var_G):
         z = tf.nn.tanh(z)        
         z_transpose = z
         #remove noise for DP        
-        z = tf.minus(z,W_noise)
+        z = tf.subtract(z,W_noise)
         
         z_ = tf.matmul(z, tf.transpose(W_fc1))
         z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)

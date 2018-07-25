@@ -58,7 +58,7 @@ with graph.as_default():
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
         G_sample, A_sample, z_true, z_trans, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, var_G)
-        G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample,  A_true_flat, var_H)
+        G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
