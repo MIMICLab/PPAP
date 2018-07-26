@@ -67,9 +67,9 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
         dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(2.0,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
+        privacy_gain = 0.01*laploss(A_true_flat, G_hacked) - dp_epsilon
         G_opt_loss = 0.01*laploss(A_true_flat,A_sample)
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + dp_epsilon + G_opt_loss
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
         H_loss =  privacy_gain
         
         tf.summary.image('Original',A_true_flat)
