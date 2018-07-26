@@ -39,9 +39,6 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         W_noise = tf.multiply(Y,W_lambda)
         z = tf.add(z,W_noise)
         z_dp_applied = z
-        #clip z_dp to ensure all values stay between -1 and 1
-        z = tf.clip_by_value(z, -1.0,1.0) 
-        z_dp_clipped = z
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2)
@@ -110,7 +107,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
                 output = tf.nn.relu(deconv)
             current_input = output
         a = current_input
-    return g, a, z_original, z_dp_applied, z_dp_clipped, W_lambda, W_noise
+    return g, a, z_original, z_dp_applied, W_lambda, W_noise
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    
