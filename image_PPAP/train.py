@@ -79,7 +79,7 @@ with graph.as_default():
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))  
         tf.summary.scalar('G_opt_loss',G_opt_loss)
-        tf.summary.scalar('privacy_gain', privacy_gain)
+        tf.summary.scalar('privacy_gain', laploss(A_true_flat, G_hacked))
         tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
         tf.summary.histogram('lambda_layer',lambda_layer)
         tf.summary.histogram('noise_layer', noise_layer)
