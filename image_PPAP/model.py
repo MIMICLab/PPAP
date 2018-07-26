@@ -31,14 +31,17 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z = tf.nn.tanh(z)
-        z_dp = z
+        z_original = z
         
         #add noise for DP
         W_lambda = tf.Variable(tf.random_normal([z_dim]))
         var_G.append(W_lambda)
         W_noise = tf.multiply(Y,W_lambda)
         z = tf.add(z,W_noise)
-        
+        z_dp_applied = z
+        #clip z_dp to ensure all values stay between -1 and 1
+        z = tf.clip_by_value(z, -1.0,1.0) 
+        z_dp_clipped = z
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2)
@@ -63,6 +66,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
     idx = 0
     encoder = []
     shapes_enc = []
+    current_input = x 
     with tf.name_scope("AutoEncoder"):
         for layer_i, n_output in enumerate(n_filters[1:]):
             n_input = current_input.get_shape().as_list()[3]
@@ -83,7 +87,6 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z = tf.nn.tanh(z)
-        z_ae = z
         #add noise for DP(not used in AE)
         W_lambda = var_G[idx]
         idx += 1      
@@ -107,7 +110,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
                 output = tf.nn.relu(deconv)
             current_input = output
         a = current_input
-    return g, a, z_dp, z_ae, W_lambda, W_noise
+    return g, a, z_original, z_dp_applied, z_dp_clipped, W_lambda, W_noise
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    

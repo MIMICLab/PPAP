@@ -58,7 +58,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample,A_sample, z_dp, z_ae, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
+        G_sample,A_sample, z_original,z_dp, z_dp_clipped, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
@@ -67,10 +67,10 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
         dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(2.0,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = 0.01*laploss(A_sample, G_hacked)
+        privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
         G_opt_loss = 0.01*laploss(A_true_flat,A_sample)
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + 0.1*dp_epsilon + G_opt_loss
-        H_loss =  privacy_gain - 0.1*dp_epsilon
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + dp_epsilon + G_opt_loss
+        H_loss =  privacy_gain
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
@@ -82,7 +82,10 @@ with graph.as_default():
         tf.summary.scalar('privacy_gain', privacy_gain)
         tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
         tf.summary.histogram('lambda_layer',lambda_layer)
-        tf.summary.histogram('noise_layer', noise_layer)        
+        tf.summary.histogram('noise_layer', noise_layer)
+        tf.summary.histogram('z_original',  z_original) 
+        tf.summary.histogram('z_dp_applied',z_dp)         
+        tf.summary.histogram('z_dp_clipped',z_dp_clipped) 
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
