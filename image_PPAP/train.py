@@ -58,7 +58,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, z_true, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
+        G_sample,A_sample, z_dp, z_ae, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
@@ -67,15 +67,18 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
         dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(2.0,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = 0.01*laploss(A_true_flat, G_hacked)
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + 0.1*dp_epsilon
+        privacy_gain = 0.01*laploss(A_sample, G_hacked)
+        G_opt_loss = 0.01*laploss(A_true_flat,A_sample)
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + 0.1*dp_epsilon + G_opt_loss
         H_loss =  privacy_gain - 0.1*dp_epsilon
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
+        tf.summary.image('autoencoded',A_sample)
         tf.summary.image('decoded_from_fake',G_hacked)
         tf.summary.scalar('D_loss', D_loss)      
-        tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))     
+        tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))  
+        tf.summary.scalar('G_opt_loss',G_opt_loss)
         tf.summary.scalar('privacy_gain', privacy_gain)
         tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
         tf.summary.histogram('lambda_layer',lambda_layer)
@@ -125,9 +128,11 @@ with graph.as_default():
                 print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; privacy_gain: {:.4}; epsilon_upper_bound: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr, dp_epsilon_curr))
 
             if it % 1000 == 0: 
-                G_sample_curr, re_fake_curr = sess.run([G_sample, G_hacked], feed_dict={X: X_mb, Z_noise: enc_noise})
+                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: enc_noise})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
+                samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
+                img_set = np.append(img_set, samples_flat[:32], axis=0)  
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
                 img_set = np.append(img_set, samples_flat[:32], axis=0)                 
 

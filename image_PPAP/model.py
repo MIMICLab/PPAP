@@ -9,11 +9,9 @@ def xavier_init(size):
 def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
     current_input = x    
     encoder = []
-    decoder = []
     shapes_enc = []
-    shapes_dec = []
-    idx = 0
-    with tf.name_scope("Encoder"):
+
+    with tf.name_scope("DP_Encoder"):
         for layer_i, n_output in enumerate(n_filters[1:]):
             n_input = current_input.get_shape().as_list()[3]
             shapes_enc.append(current_input.get_shape().as_list())
@@ -33,7 +31,8 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z = tf.nn.tanh(z)
-        z_value = z
+        z_dp = z
+        
         #add noise for DP
         W_lambda = tf.Variable(tf.random_normal([z_dim]))
         var_G.append(W_lambda)
@@ -50,8 +49,6 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
             W_enc = encoder[layer_i]
             W = tf.Variable(xavier_init(W_enc.get_shape().as_list()))
             var_G.append(W)
-            decoder.append(W)
-            shapes_dec.append(current_input.get_shape().as_list())
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
@@ -62,8 +59,55 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
                 output = tf.nn.relu(deconv)
             current_input = output
         g = current_input
-
-    return g, z_value, W_lambda, W_noise
+        
+    idx = 0
+    encoder = []
+    shapes_enc = []
+    with tf.name_scope("AutoEncoder"):
+        for layer_i, n_output in enumerate(n_filters[1:]):
+            n_input = current_input.get_shape().as_list()[3]
+            shapes_enc.append(current_input.get_shape().as_list())
+            W = var_G[idx]
+            idx += 1
+            encoder.append(W)
+            conv = tf.nn.conv2d(current_input, W, strides=[1, 2, 2, 1], padding='SAME')          
+            conv = tf.contrib.layers.batch_norm(conv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+            output = tf.nn.leaky_relu(conv)
+            current_input = output
+        encoder.reverse()
+        shapes_enc.reverse() 
+        z_flat = tf.layers.flatten(current_input)
+        z_flat_dim = int(z_flat.get_shape()[1])
+        W_fc1 = var_G[idx]
+        idx += 1
+        z = tf.matmul(z_flat,W_fc1)
+        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z = tf.nn.tanh(z)
+        z_ae = z
+        #add noise for DP(not used in AE)
+        W_lambda = var_G[idx]
+        idx += 1      
+        W_fc2 = var_G[idx]
+        idx += 1
+        z_ = tf.matmul(z,W_fc2)
+        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z_ = tf.nn.relu(z_)        
+        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])           
+        for layer_i, shape in enumerate(shapes_enc):
+            W_enc = encoder[layer_i]
+            W = var_G[idx]
+            idx += 1
+            deconv = tf.nn.conv2d_transpose(current_input, W,
+                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
+                                     strides=[1, 2, 2, 1], padding='SAME')
+            if layer_i == len(n_filters)-2:
+                output = tf.nn.sigmoid(deconv)
+            else:
+                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+                output = tf.nn.relu(deconv)
+            current_input = output
+        a = current_input
+    return g, a, z_dp, z_ae, W_lambda, W_noise
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    
