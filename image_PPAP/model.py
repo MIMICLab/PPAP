@@ -77,27 +77,9 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
             current_input = output
         encoder.reverse()
         shapes_enc.reverse() 
-        z_flat = tf.layers.flatten(current_input)
-        z_flat_dim = int(z_flat.get_shape()[1])
-        W_fc1 = var_G[idx]
-        idx += 1
-        z = tf.matmul(z_flat,W_fc1)
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
-        #add noise for DP(not used in AE)
-        W_lambda = var_G[idx]
-        idx += 1      
-        W_fc2 = var_G[idx]
-        idx += 1
-        z_ = tf.matmul(z,W_fc2)
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)        
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])           
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
-            W = var_G[idx]
-            idx += 1
-            deconv = tf.nn.conv2d_transpose(current_input, W,
+            deconv = tf.nn.conv2d_transpose(current_input, W_enc,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
             if layer_i == len(n_filters)-2:
