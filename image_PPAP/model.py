@@ -118,7 +118,7 @@ def ga_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
         b_n2 = tf.Variable(tf.zeros([z_dim]))
         var_G.append(W_n2)
         var_G.append(b_n2)
-        z_noise = tf.nn.xw_plus_b(z_original,W_n2, b_n2)
+        z_noise = tf.nn.xw_plus_b(z_noise,W_n2, b_n2)
         z = tf.add(z_original,z_noise)
         z_noise_applied = z
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
