@@ -115,10 +115,10 @@ def ga_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
         z_noise = tf.contrib.layers.batch_norm(z_noise,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z_noise = tf.nn.leaky_relu(z_noise)
         W_n2 = tf.Variable(xavier_init([z_dim, z_dim]))
+        b_n2 = tf.Variable(tf.zeros([z_dim]))
         var_G.append(W_n2)
-        z_noise = tf.matmul(z_original,W_n2)
-        z_noise = tf.contrib.layers.batch_norm(z_noise,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_noise = tf.nn.leaky_relu(z_noise)        
+        var_G.append(b_n2)
+        z_noise = tf.xw_plus_b(z_original,W_n2, bn_2)
         z = tf.add(z_original,z_noise)
         z_noise_applied = z
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
