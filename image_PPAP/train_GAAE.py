@@ -36,7 +36,7 @@ with graph.as_default():
             n_filters=[channels, hidden, hidden*2, hidden*4]
             
         X = tf.placeholder(tf.float32, shape=[None, width, height,channels])
-        Z_noise = tf.placeholder(tf.float32, shape=[None,  z_dim])
+
         A_true_flat = X
         
         #autoencoder variables
@@ -58,15 +58,13 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample,A_sample, z_original,z_dp, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
+        G_sample,A_sample, z_original, z_noise, z_noise_applied = ga_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, var_G)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
         
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)
-        dp_sensitivity = tf.reduce_max(z_original) - tf.reduce_min(z_original)
-        dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(dp_sensitivity,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
         privacy_gain = laploss(A_true_flat, G_hacked) 
         G_opt_loss = laploss(A_true_flat,A_sample)
@@ -81,11 +79,9 @@ with graph.as_default():
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))  
         tf.summary.scalar('G_opt_loss',G_opt_loss)
         tf.summary.scalar('privacy_gain', laploss(A_true_flat, G_hacked))
-        tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
-        tf.summary.histogram('lambda_layer',lambda_layer)
-        tf.summary.histogram('noise_layer', noise_layer)
         tf.summary.histogram('z_original',  z_original) 
-        tf.summary.histogram('z_dp_applied',z_dp)         
+        tf.summary.histogram('z_noise', z_noise)  
+        tf.summary.histogram('z_noise_applied', z_noise_applied)  
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
@@ -95,22 +91,22 @@ with graph.as_default():
         H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
         
         timestamp = str(int(time.time()))
-        if not os.path.exists('results/'):
-            os.makedirs('results/')        
-        out_dir = os.path.abspath(os.path.join(os.path.curdir, "results/models/{}_".format(dataset) + timestamp))
+        if not os.path.exists('results/GAAE/'):
+            os.makedirs('results/GAAE/')        
+        out_dir = os.path.abspath(os.path.join(os.path.curdir, "results/GAAE/models/{}_".format(dataset) + timestamp))
         checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
         checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-        if not os.path.exists('results/models/'):
-            os.makedirs('results/models/')
+        if not os.path.exists('results/GAAE/models/'):
+            os.makedirs('results/GAAE/models/')
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
             saver = tf.train.Saver(tf.global_variables())
-        if not os.path.exists('results/dc_out_{}/'.format(dataset)):
-            os.makedirs('results/dc_out_{}/'.format(dataset))
-        if not os.path.exists('results/generated_{}/'.format(dataset)):
-            os.makedirs('results/generated_{}/'.format(dataset))            
+        if not os.path.exists('results/GAAE/dc_out_{}/'.format(dataset)):
+            os.makedirs('results/GAAE/dc_out_{}/'.format(dataset))
+        if not os.path.exists('results/GAAE/generated_{}/'.format(dataset)):
+            os.makedirs('results/GAAE/generated_{}/'.format(dataset))            
 
-        train_writer = tf.summary.FileWriter('results/graphs/{}'.format(dataset),sess.graph)
+        train_writer = tf.summary.FileWriter('results/graphs/GAAE/{}'.format(dataset),sess.graph)
         sess.run(tf.global_variables_initializer())
         i = 0       
         for it in range(1000000000):
@@ -120,18 +116,16 @@ with graph.as_default():
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
                 else:
                     X_mb = next_batch(mb_size, x_train)
-                    
-                enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
-                _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})    
-            summary, _, G_loss_curr, dp_epsilon_curr = sess.run([merged,G_solver, G_loss, dp_epsilon],feed_dict={X: X_mb, Z_noise: enc_noise})
+                _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb})    
+            summary, _, G_loss_curr = sess.run([merged,G_solver, G_loss],feed_dict={X: X_mb})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
             if it % 100 == 0:
-                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; privacy_gain: {:.4}; epsilon_upper_bound: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr, dp_epsilon_curr))
+                print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; privacy_gain: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr))
 
             if it % 1000 == 0: 
-                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: enc_noise})
+                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
                 img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
@@ -140,7 +134,7 @@ with graph.as_default():
                 img_set = np.append(img_set, samples_flat[:32], axis=0)                 
 
                 fig = plot(img_set, width, height, channels)
-                plt.savefig('results/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
+                plt.savefig('results/GAAE/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
                 plt.close(fig)
                 i += 1
                 path = saver.save(sess, checkpoint_prefix, global_step=current_step)
@@ -152,25 +146,23 @@ with graph.as_default():
                         Xt_mb, _ = x_train.train.next_batch(100)
                         Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
                     else:
-                        Xt_mb = next_batch(100, x_train)
-                    enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)    
-                    samples = sess.run(G_sample, feed_dict={X: Xt_mb, Z_noise: enc_noise})
+                        Xt_mb = next_batch(100, x_train) 
+                    samples = sess.run(G_sample, feed_dict={X: Xt_mb})
                     if ii == 0:
                         generated = samples
                     else:
                         generated = np.concatenate((generated,samples), axis=0)
-                np.save('results/generated_{}/generated_image.npy'.format(dataset), generated)
+                np.save('results/GAAE/generated_{}/generated_image.npy'.format(dataset), generated)
 
     for iii in range(len_x_train//100):
         if dataset == 'mnist':
             Xt_mb, _ = x_train.train.next_batch(100)
             Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
         else:
-            Xt_mb = next_batch(100, x_train)
-        enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
-        samples = sess.run(G_sample, feed_dict={X: xt_mb, Z_noise: enc_noise})
+            Xt_mb = next_batch(100, x_train) 
+        samples = sess.run(G_sample, feed_dict={X: xt_mb})
         if iii == 0:
             generated = samples
         else:
             generated = np.concatenate((generated,samples), axis=0)
-    np.save('results/generated_{}/generated_image.npy'.format(dataset), generated)
+    np.save('results/GAAE/generated_{}/generated_image.npy'.format(dataset), generated)
