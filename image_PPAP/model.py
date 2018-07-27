@@ -87,9 +87,7 @@ def autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    
     encoder = []
-    decoder = []
     shapes_enc = []
-    shapes_dec = []
     idx = 0
     with tf.name_scope("Encoder"):
         for layer_i, n_output in enumerate(n_filters[1:]):
@@ -107,28 +105,7 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             output = tf.nn.leaky_relu(conv)
             current_input = output
         encoder.reverse()
-        shapes_enc.reverse()    
-        z_flat = tf.layers.flatten(current_input)
-        z_flat_dim = int(z_flat.get_shape()[1])
-        
-        #from here, hacker tries to find real z
-        W_fc1 = tf.Variable(tf.random_normal([z_flat_dim, z_dim]))
-        var_G.append(W_fc1)
-        z = tf.matmul(z_flat,W_fc1)
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.leaky_relu(z)
-        W_decode = tf.Variable(tf.random_normal([z_dim, z_dim]))
-        b_decode = tf.Variable(tf.random_normal([z_dim]))
-        var_G.append(W_decode)
-        var_G.append(b_decode)
-        z_ = tf.nn.xw_plus_b(z, W_decode, b_decode)
-        z_decoded = z_
-        W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
-        var_G.append(W_fc2)
-        z_ = tf.matmul(z,W_fc2)
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)        
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])          
+        shapes_enc.reverse()      
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
             if reuse == False:
@@ -137,8 +114,6 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             else:
                 W = var_G[idx]
                 idx+=1
-            decoder.append(W)
-            shapes_dec.append(current_input.get_shape().as_list())
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')
@@ -150,7 +125,7 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             current_input = output  
             
         a =  current_input
-    return a, z_decoded
+    return a
 
 def discriminator(x,var_D):
     current_input = x
