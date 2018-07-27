@@ -87,7 +87,8 @@ with graph.as_default():
         tf.summary.histogram('lambda_layer',lambda_layer)
         tf.summary.histogram('noise_layer', noise_layer)
         tf.summary.histogram('z_original',  z_original) 
-        tf.summary.histogram('z_dp_applied',z_dp)         
+        tf.summary.histogram('z_dp_applied',z_dp)  
+        tf.summary.histogram('z_hacked',z_hacked)        
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
