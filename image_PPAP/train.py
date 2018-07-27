@@ -59,7 +59,7 @@ with graph.as_default():
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
         G_sample,A_sample, z_original,z_dp, lambda_layer, noise_layer = autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
-        G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
+        G_hacked,z_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
@@ -67,11 +67,12 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)
         dp_sensitivity = tf.reduce_max(z_original) - tf.reduce_min(z_original)
         dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(dp_sensitivity,lambda_layer)))
+        z_diff = tf.reduce_mean(tf.pow(z_original-z_hacked,2))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = laploss(A_sample, G_hacked) 
+        privacy_gain = laploss(A_true_flat, G_hacked) 
         G_opt_loss = laploss(A_true_flat,A_sample)
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
-        H_loss =  privacy_gain
+        H_loss =  privacy_gain + z_diff
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
@@ -81,6 +82,7 @@ with graph.as_default():
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))  
         tf.summary.scalar('G_opt_loss',G_opt_loss)
         tf.summary.scalar('privacy_gain', laploss(A_true_flat, G_hacked))
+        tf.summary.scalar('z_diff',z_diff)
         tf.summary.scalar('epsilon_upper_bound', dp_epsilon)
         tf.summary.histogram('lambda_layer',lambda_layer)
         tf.summary.histogram('noise_layer', noise_layer)

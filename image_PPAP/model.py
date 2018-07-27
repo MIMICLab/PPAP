@@ -110,10 +110,19 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
         shapes_enc.reverse()    
         z_flat = tf.layers.flatten(current_input)
         z_flat_dim = int(z_flat.get_shape()[1])
+        
+        #from here, hacker tries to find real z
         W_fc1 = tf.Variable(tf.random_normal([z_flat_dim, z_dim]))
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)    
+        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z = tf.nn.leaky_relu(z)
+        W_decode = tf.Variable(tf.random_normal([z_dim, z_dim]))
+        b_decode = tf.Variable(tf.random_normal([z_dim]))
+        var_G.append(W_decode)
+        var_G.append(b_decode)
+        z_ = tf.nn.xw_plus_b(z, W_decode, b_decode)
+        z_decoded = z_
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2)
@@ -141,7 +150,7 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             current_input = output  
             
         a =  current_input
-    return a
+    return a, z_decoded
 
 def discriminator(x,var_D):
     current_input = x
