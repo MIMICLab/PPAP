@@ -64,13 +64,14 @@ with graph.as_default():
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
         
-        gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)    
-        dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(2.0,lambda_layer)))
+        gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)
+        dp_sensitivity = tf.reduce_max(z_original) - tf.reduce_min(z_original)
+        dp_epsilon = tf.reduce_mean(tf.abs(tf.divide(dp_sensitivity,lambda_layer)))
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = laploss(A_true_flat, G_hacked) - 10.0*dp_epsilon
+        privacy_gain = laploss(A_sample, G_hacked) 
         G_opt_loss = laploss(A_true_flat,A_sample)
-        G_loss = -tf.reduce_mean(D_fake_logits) - 0.1*privacy_gain + 0.1*G_opt_loss
-        H_loss =  0.1*privacy_gain
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
+        H_loss =  privacy_gain
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
