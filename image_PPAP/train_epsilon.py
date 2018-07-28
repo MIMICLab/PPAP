@@ -29,7 +29,7 @@ with graph.as_default():
         filter_sizes=[5, 5, 5, 5, 5]        
         hidden = 128
         z_dim = 128   
-        epsilon_init = 20.0
+        epsilon_init = sys.argv[2]
         if dataset == 'celebA' or dataset == 'lsun':        
             n_filters=[channels, hidden, hidden*2, hidden*4, hidden*8]
         else:      
@@ -67,7 +67,7 @@ with graph.as_default():
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)
         dp_epsilon = tf.reduce_mean(epsilon_layer)
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        privacy_gain = laploss(A_true_flat, G_hacked) - 10.0*dp_epsilon
+        privacy_gain = laploss(A_true_flat, G_hacked)
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         G_img_loss = laploss(A_true_flat,A_sample)
         G_opt_loss = G_z_loss + G_img_loss
