@@ -6,7 +6,7 @@ def xavier_init(size):
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
-def dp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
+def dp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G, epsilon_init = 20.0):
     current_input = x    
     encoder = []
     shapes_enc = []
@@ -29,13 +29,16 @@ def dp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z = tf.nn.tanh(z)
+    with tf.name_scope("Noise_Applier"):        
         z_original = z
-        #add noise for DP
-        W_lambda = tf.Variable(tf.random_normal([z_dim]))
-        var_G.append(W_lambda)
-        W_noise = tf.multiply(Y,W_lambda)
+        W_epsilon = tf.Variable(tf.fill([z_dim],epsilon_init))
+        var_G.append(W_epsilon)
+        dp_lambda = tf.divide(2.0 ,W_epsilon)
+        W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
-        z_dp_applied = z
+        z_noise_applied = z
+    with tf.name_scope("DP_decoder"):        
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2) 
@@ -57,31 +60,9 @@ def dp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
             current_input = output
         g = current_input
         
-    idx = 0
-    with tf.name_scope("AutoEncoder"):
-        z = z_original
-        z_ = tf.matmul(z,tf.transpose(W_fc1))  
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)        
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])           
-        for layer_i, shape in enumerate(shapes_enc):
-            W = encoder[layer_i]
-            deconv = tf.nn.conv2d_transpose(current_input, W,
-                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
-                                     strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
-            current_input = output
-        a = current_input
-    return g, a, z_original, z_dp_applied, W_lambda, W_noise
-def ga_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
-    current_input = x    
     encoder = []
     shapes_enc = []
-    with tf.name_scope("GA_Encoder"):
+    with tf.name_scope("R_Encoder"):
         for layer_i, n_output in enumerate(n_filters[1:]):
             n_input = current_input.get_shape().as_list()[3]
             shapes_enc.append(current_input.get_shape().as_list())
@@ -100,20 +81,11 @@ def ga_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_original = z
-        #generate noise based on z_original
-        W_n1 = tf.Variable(xavier_init([z_dim, z_dim]))
-        var_G.append(W_n1)
-        z_noise = tf.matmul(z_original,W_n1)
-        z_noise = tf.contrib.layers.batch_norm(z_noise,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_noise = tf.nn.leaky_relu(z_noise)
-        W_n2 = tf.Variable(xavier_init([z_dim, z_dim]))
-        b_n2 = tf.Variable(tf.zeros([z_dim]))
-        var_G.append(W_n2)
-        var_G.append(b_n2)
-        z_noise = tf.nn.xw_plus_b(z_noise,W_n2, b_n2)
-        z = tf.add(z_original,z_noise)
-        z_noise_applied = z
+        z = tf.nn.tanh(z)
+    with tf.name_scope("Noise_Remover"):        
+        z = tf.subtract(z,W_noise)
+        z_noise_removed = z
+    with tf.name_scope("R_decoder"):        
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2) 
@@ -133,27 +105,8 @@ def ga_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
                 deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
                 output = tf.nn.relu(deconv)
             current_input = output
-        g = current_input
-        
-    with tf.name_scope("AutoEncoder"):
-        z = z_original
-        z_ = tf.matmul(z,tf.transpose(W_fc1))  
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)        
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])           
-        for layer_i, shape in enumerate(shapes_enc):
-            W = encoder[layer_i]
-            deconv = tf.nn.conv2d_transpose(current_input, W,
-                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
-                                     strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-                output = tf.nn.relu(deconv)
-            current_input = output
         a = current_input
-    return g, a, z_original, z_noise, z_noise_applied
+    return g, a, z_original, z_noise_applied, z_noise_removed, W_epsilon, W_noise
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    
@@ -183,6 +136,8 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        z = tf.nn.tanh(z)
+    with tf.name_scope("Decoder"):        
         W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
         z_ = tf.matmul(z,W_fc2) 
