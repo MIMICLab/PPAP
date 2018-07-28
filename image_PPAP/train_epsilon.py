@@ -73,7 +73,7 @@ with graph.as_default():
             privacy_gain = 0.1*laploss(A_true_flat, G_hacked) + 10.0*tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         if dataset == 'mnist':
-            G_img_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
+            G_img_loss = 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
         else:
             G_img_loss = 0.1*laploss(A_true_flat,A_sample) + 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
         G_opt_loss = G_z_loss + G_img_loss
