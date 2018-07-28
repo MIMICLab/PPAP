@@ -69,15 +69,18 @@ with graph.as_default():
         dp_epsilon = tf.reduce_mean(epsilon_layer)
         dp_delta = tf.reduce_mean(delta_layer)
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
-        if dataset == 'mnist':
-            privacy_gain = 10.0*tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
-        else:
-            privacy_gain = 0.1*laploss(A_true_flat, G_hacked) + 10.0*tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
+        #if dataset == 'mnist':
+        #    privacy_gain = 10.0*tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
+        #else:
+        #    privacy_gain = 0.1*laploss(A_true_flat, G_hacked) + 10.0*tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
+        #if dataset == 'mnist':
+        #    G_img_loss = 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
+        #else:
+        #    G_img_loss = 0.1*laploss(A_true_flat,A_sample) + 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
+        privacy_gain = 10.0*tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
-        if dataset == 'mnist':
-            G_img_loss = 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-        else:
-            G_img_loss = 0.1*laploss(A_true_flat,A_sample) + 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
+        G_img_loss = 10.0*tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
+
         G_opt_loss = G_z_loss + G_img_loss
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
         H_loss =  privacy_gain
