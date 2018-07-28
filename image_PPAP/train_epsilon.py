@@ -29,7 +29,7 @@ with graph.as_default():
         filter_sizes=[5, 5, 5, 5, 5]        
         hidden = 128
         z_dim = 128   
-        epsilon_init = sys.argv[2]
+        epsilon_init = float(sys.argv[2])
         if dataset == 'celebA' or dataset == 'lsun':        
             n_filters=[channels, hidden, hidden*2, hidden*4, hidden*8]
         else:      
