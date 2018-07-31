@@ -15,8 +15,8 @@ def xavier_init(size):
 
 dataset = sys.argv[1]
 
-mb_size, X_dim, width, height, channels,len_x_train, x_train = data_loader(dataset)
-    
+mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test = data_loader(dataset)
+
     
 graph = tf.Graph()
 with graph.as_default():
@@ -29,6 +29,7 @@ with graph.as_default():
         filter_sizes=[5, 5, 5, 5, 5]        
         hidden = 128
         z_dim = 128   
+        test_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)             
         epsilon_init = float(sys.argv[2])
         delta_init = float(sys.argv[3])
         if dataset == 'celebA' or dataset == 'lsun':        
@@ -74,7 +75,7 @@ with graph.as_default():
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         G_img_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
 
-        G_opt_loss = G_z_loss + G_img_loss
+        G_opt_loss = G_z_loss + G_img_loss - 0.1*dp_epsilon
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
         H_loss =  privacy_gain
         
@@ -140,13 +141,14 @@ with graph.as_default():
                 print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; privacy_gain: {:.4}; epsilon: {:.4}; delta: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr, dp_epsilon_curr, dp_delta_curr))
 
             if it % 1000 == 0: 
-                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: enc_noise})
+                Xt_mb = x_test[:mb_size]                
+                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: test_noise})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
-                img_set = np.append(X_mb[:32], samples_flat[:32], axis=0)
+                img_set = np.append(X_mb[:128], samples_flat[:128], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:32], axis=0)  
+                img_set = np.append(img_set, samples_flat[:128], axis=0)  
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:32], axis=0)                 
+                img_set = np.append(img_set, samples_flat[:128], axis=0)                 
 
                 fig = plot(img_set, width, height, channels)
                 plt.savefig('results/epsilon_delta_DP/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
@@ -156,13 +158,13 @@ with graph.as_default():
                 print('Saved model at {} at step {}'.format(path, current_step))
 
             if it% 100000 == 0 and it!=0:
-                for ii in range(len_x_train//100):
+                for ii in range(len_x_test//100):
                     if dataset == 'mnist':
-                        Xt_mb, _ = x_train.train.next_batch(100)
+                        Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
                         Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
                     else:
-                        Xt_mb = next_batch(100, x_train)
-                    enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)    
+                        Xt_mb = next_batch(100, x_train,shuffle=False)
+                    enc_noise = np.random.normal(0.0,1.0,[100,z_dim]).astype(np.float32)    
                     samples = sess.run(G_sample, feed_dict={X: Xt_mb, Z_noise: enc_noise})
                     if ii == 0:
                         generated = samples
@@ -170,13 +172,13 @@ with graph.as_default():
                         generated = np.concatenate((generated,samples), axis=0)
                 np.save('results/epsilon_delta_DP/generated_{}/generated_image.npy'.format(dataset), generated)
 
-    for iii in range(len_x_train//100):
+    for iii in range(len_x_test//100):
         if dataset == 'mnist':
-            Xt_mb, _ = x_train.train.next_batch(100)
+            Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
             Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
         else:
-            Xt_mb = next_batch(100, x_train)
-        enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
+            Xt_mb = next_batch(100, x_test,shuffle=False)
+        enc_noise = np.random.normal(0.0,1.0,[100,z_dim]).astype(np.float32)  
         samples = sess.run(G_sample, feed_dict={X: xt_mb, Z_noise: enc_noise})
         if iii == 0:
             generated = samples
