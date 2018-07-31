@@ -73,7 +73,7 @@ with graph.as_default():
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         G_img_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
 
-        G_opt_loss = G_z_loss + G_img_loss - 0.1*dp_epsilon
+        G_opt_loss = G_z_loss + G_img_loss + dp_epsilon
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
         H_loss =  privacy_gain
         
