@@ -142,9 +142,9 @@ with graph.as_default():
 
             if it % 1000 == 0: 
                 Xt_mb = x_test[:mb_size]                
-                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: test_noise})
+                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: Xt_mb, Z_noise: test_noise})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
-                img_set = np.append(X_mb[:128], samples_flat[:128], axis=0)
+                img_set = np.append(Xt_mb[:128], samples_flat[:128], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
                 img_set = np.append(img_set, samples_flat[:128], axis=0)  
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
