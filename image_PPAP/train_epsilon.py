@@ -69,13 +69,14 @@ with graph.as_default():
         dp_epsilon = tf.reduce_mean(epsilon_layer)
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp 
 
-        privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
+        hack_loss = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         G_img_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-
+        noise_scale = 2.0/dp_epsilon
+        privacy_gain = hack_loss*noise_scale
         G_opt_loss = G_z_loss + G_img_loss + dp_epsilon
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
-        H_loss =  privacy_gain
+        H_loss =  privacy_gain 
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
@@ -84,7 +85,8 @@ with graph.as_default():
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))  
         tf.summary.scalar('G_z_loss',G_z_loss)
-        tf.summary.scalar('G_img_loss',G_img_loss)        
+        tf.summary.scalar('G_img_loss',G_img_loss) 
+        tf.summary.scalar('hack_loss',hack_loss)
         tf.summary.scalar('privacy_gain',privacy_gain)
         tf.summary.scalar('epsilon', dp_epsilon)
         tf.summary.histogram('epsilon_layer',epsilon_layer)
