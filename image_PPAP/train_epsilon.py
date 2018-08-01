@@ -72,7 +72,7 @@ with graph.as_default():
         hack_loss = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         G_img_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-        noise_scale = 2.0/dp_epsilon
+        noise_scale = 1.0/dp_epsilon
         privacy_gain = hack_loss*noise_scale
         G_opt_loss = G_z_loss + G_img_loss
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
