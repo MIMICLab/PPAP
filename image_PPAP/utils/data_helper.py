@@ -20,10 +20,7 @@ def data_loader(dataset):
         height = 28
         channels = 1
         len_x_train = 60000
-        len_x_test = 10000
         x_train = input_data.read_data_sets('data/MNIST_data', one_hot=True)
-        x_test,_ = x_train.test.next_batch(len_x_test, shuffle=False)
-        x_test = np.reshape(x_test,[-1,28,28,1])
         
     if dataset == 'svhn':
         mb_size = 256
@@ -32,7 +29,6 @@ def data_loader(dataset):
         height = 32
         channels = 3    
         len_x_train = 604388
-        len_x_test = 26032
 
         train_location = 'data/SVHN/train_32x32.mat'
         extra_location = 'data/SVHN/extra_32x32.mat'
@@ -54,24 +50,15 @@ def data_loader(dataset):
         x_train = np.concatenate((x_train, x_extra), axis=0)
         x_train = normalize(x_train)
         
-        test_dict = sio.loadmat(test_location)
-        x_ = np.asarray(test_dict['X'])
-        x_test = []
-        for i in range(x_.shape[3]):
-            x_test.append(x_[:,:,:,i])
-        x_test = np.asarray(x_test)
-        
     if dataset == 'cifar10':
         mb_size = 256
         X_dim = 1024
         len_x_train = 50000
-        len_x_test = 10000
         width = 32
         height = 32
         channels = 3    
         (x_train, y_train), (x_test, y_test) = load_data()
         x_train = normalize(x_train)
-        x_test = normalize(x_test)
 
     if dataset == 'celebA':
         mb_size = 128
@@ -81,12 +68,10 @@ def data_loader(dataset):
         channels = 3     
         download_celeb_a("data")
         data_files = glob(os.path.join("data/celebA/*.jpg"))
-        len_x_train = 200000
-        len_x_test = 2599
+        len_x_train = 202599
         sample = [get_image(sample_file, 128, True, 64, is_grayscale = 0) for sample_file in data_files]
         sample_images = np.array(sample).astype(np.float32)
-        x_train = sample_images[:200000]
-        x_test = sample_images[200000:]
+        x_train = sample_images
         
     if dataset == 'lsun':
         mb_size = 128
@@ -96,10 +81,8 @@ def data_loader(dataset):
         channels = 3    
         download_lsun("data")
         lsun = Lsun("data/lsun/bedroom_train_lmdb")
-        len_x_train = 3000000  
-        len_x_test = 33042
+        len_x_train = 3033042 
         sample_images = lsun.load_data(len_x_train)
-        x_train = sample_images[:3000000]
-        x_test = sample_images[3000000:]      
+        x_train = sample_images   
         
-    return mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test 
+    return mb_size, X_dim, width, height, channels,len_x_train, x_train

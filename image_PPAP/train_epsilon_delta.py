@@ -15,7 +15,7 @@ def xavier_init(size):
 
 dataset = sys.argv[1]
 
-mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test = data_loader(dataset)
+mb_size, X_dim, width, height, channels,len_x_train, x_train = data_loader(dataset)
 
     
 graph = tf.Graph()
@@ -28,8 +28,7 @@ with graph.as_default():
         input_shape=[None, width, height, channels]
         filter_sizes=[5, 5, 5, 5, 5]        
         hidden = 128
-        z_dim = 128   
-        test_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)             
+        z_dim = 128            
         epsilon_init = float(sys.argv[2])
         delta_init = float(sys.argv[3])
         if dataset == 'celebA' or dataset == 'lsun':        
@@ -71,12 +70,10 @@ with graph.as_default():
         dp_delta = tf.reduce_mean(delta_layer)
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
 
-        hack_loss = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
+        privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))
         G_z_loss = tf.reduce_mean(tf.pow(z_original - z_removed,2))
         G_img_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))
-        noise_scale =  tf.sqrt(2*tf.log(1.25/dp_delta))*(1.0/dp_epsilon)
-        privacy_gain = hack_loss*noise_scale
-        G_opt_loss = G_z_loss + G_img_loss
+        G_opt_loss = G_z_loss + G_img_loss +0.1*(dp_epsilon + dp_delta)
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
         H_loss =  privacy_gain
         
@@ -88,8 +85,7 @@ with graph.as_default():
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))  
         tf.summary.scalar('G_z_loss',G_z_loss)
         tf.summary.scalar('G_img_loss',G_img_loss)        
-        tf.summary.scalar('privacy_gain', privacy_gain)
-        tf.summary.scalar('hack_loss', hack_loss)        
+        tf.summary.scalar('privacy_gain', privacy_gain)      
         tf.summary.scalar('epsilon', dp_epsilon)
         tf.summary.scalar('delta', dp_delta)        
         tf.summary.histogram('epsilon_layer',epsilon_layer)
@@ -142,11 +138,10 @@ with graph.as_default():
             if it % 100 == 0:
                 print('Iter: {}; D_loss: {:.4}; G_loss: {:.4}; privacy_gain: {:.4}; epsilon: {:.4}; delta: {:.4};'.format(it,D_loss_curr, G_loss_curr,H_loss_curr, dp_epsilon_curr, dp_delta_curr))
 
-            if it % 1000 == 0: 
-                Xt_mb = x_test[:mb_size]                
-                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: Xt_mb, Z_noise: test_noise})
+            if it % 1000 == 0:                 
+                G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample, A_sample, G_hacked], feed_dict={X: X_mb, Z_noise: enc_noise})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
-                img_set = np.append(Xt_mb[:128], samples_flat[:128], axis=0)
+                img_set = np.append(X_mb[:128], samples_flat[:128], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
                 img_set = np.append(img_set, samples_flat[:128], axis=0)  
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
@@ -160,9 +155,9 @@ with graph.as_default():
                 print('Saved model at {} at step {}'.format(path, current_step))
 
             if it% 100000 == 0 and it!=0:
-                for ii in range(len_x_test//100):
+                for ii in range(len_x_train//100):
                     if dataset == 'mnist':
-                        Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
+                        Xt_mb, _ = x_train.train.next_batch(100,shuffle=False)
                         Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
                     else:
                         Xt_mb = next_batch(100, x_train,shuffle=False)
@@ -174,14 +169,14 @@ with graph.as_default():
                         generated = np.concatenate((generated,samples), axis=0)
                 np.save('results/epsilon_delta_DP/generated_{}/generated_image.npy'.format(dataset), generated)
 
-    for iii in range(len_x_test//100):
+    for iii in range(len_x_train//100):
         if dataset == 'mnist':
-            Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
+            Xt_mb, _ = x_train.train.next_batch(100,shuffle=False)
             Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
         else:
-            Xt_mb = next_batch(100, x_test,shuffle=False)
+            Xt_mb = next_batch(100, x_train,shuffle=False)
         enc_noise = np.random.normal(0.0,1.0,[100,z_dim]).astype(np.float32)  
-        samples = sess.run(G_sample, feed_dict={X: xt_mb, Z_noise: enc_noise})
+        samples = sess.run(G_sample, feed_dict={X: Xt_mb, Z_noise: enc_noise})
         if iii == 0:
             generated = samples
         else:
