@@ -72,7 +72,7 @@ with graph.as_default():
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
 
         privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain +dp_epsilon + dp_delta
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain
         H_loss = -tf.reduce_mean(D_hacked_logits) + privacy_gain 
         
         tf.summary.image('Original',A_true_flat)
@@ -125,8 +125,8 @@ with graph.as_default():
                     
                 enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb, Z_noise: enc_noise})  
-                _, H_loss_curr, _ = sess.run([H_solver, H_loss,delta_clip],feed_dict={X: X_mb, Z_noise: enc_noise})       
-            summary, _, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged,G_solver, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
+            _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})       
+            summary, _, G_loss_curr, dp_epsilon_curr,dp_delta_curr,_ = sess.run([merged,G_solver, G_loss, dp_epsilon,dp_delta, delta_clip],feed_dict={X: X_mb, Z_noise: enc_noise})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
