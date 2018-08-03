@@ -34,7 +34,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G, eps
         z_original = z
         W_epsilon = tf.Variable(tf.fill([z_dim],epsilon_init))
         var_G.append(W_epsilon)
-        dp_lambda = tf.divide(2.0 ,W_epsilon)
+        dp_lambda = tf.divide(2.0 ,tf.add(W_epsilon,1e-8))
         W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
         z_noise_applied = z
@@ -92,8 +92,8 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_G, e
         var_G.append(W_epsilon)
         W_delta = tf.Variable(tf.fill([z_dim],delta_init))
         var_G.append(W_delta)
-        dp_delta = tf.square(tf.multiply(2.0,tf.log(tf.divide(1.25,W_delta))))
-        dp_lambda = tf.multiply(dp_delta,tf.divide(2.0 ,W_epsilon))
+        dp_delta = tf.square(tf.multiply(2.0,tf.log(tf.divide(1.25,tf.add(W_delta,1e-8)))))
+        dp_lambda = tf.multiply(dp_delta,tf.divide(2.0 ,tf.add(W_epsilon,1e-8)))
         W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
         z_noise_applied = z
@@ -143,20 +143,20 @@ def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
             current_input = output
         encoder.reverse()
         shapes_enc.reverse()    
-        z_flat = tf.layers.flatten(current_input)
-        z_flat_dim = int(z_flat.get_shape()[1])
-        W_fc1 = tf.Variable(tf.random_normal([z_flat_dim, z_dim]))
-        var_G.append(W_fc1)
-        z = tf.matmul(z_flat,W_fc1)
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        
+        #z_flat = tf.layers.flatten(current_input)
+        #z_flat_dim = int(z_flat.get_shape()[1])
+        #W_fc1 = tf.Variable(tf.random_normal([z_flat_dim, z_dim]))
+        #var_G.append(W_fc1)
+        #z = tf.matmul(z_flat,W_fc1)
+        #z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z = tf.nn.tanh(z)
     with tf.name_scope("Decoder"):        
-        W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
-        var_G.append(W_fc2)
-        z_ = tf.matmul(z,W_fc2) 
-        z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_ = tf.nn.relu(z_)
-        current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])         
+        #W_fc2 = tf.Variable(tf.random_normal([z_dim, z_flat_dim]))
+        #var_G.append(W_fc2)
+        #z_ = tf.matmul(z,W_fc2) 
+        #z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
+        #z_ = tf.nn.relu(z_)
+        #current_input = tf.reshape(z_, [-1, 4, 4, n_filters[-1]])         
         for layer_i, shape in enumerate(shapes_enc):
             W_enc = encoder[layer_i]
             if reuse == False:

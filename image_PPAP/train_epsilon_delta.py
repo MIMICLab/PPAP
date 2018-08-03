@@ -64,7 +64,6 @@ with graph.as_default():
              
         D_real_logits = discriminator(A_true_flat, var_D)
         D_fake_logits = discriminator(G_sample, var_D)
-        D_hacked_logits = discriminator(G_hacked, var_D)
         
         gp = gradient_penalty(G_sample, A_true_flat, mb_size,var_D)
         dp_epsilon = tf.reduce_mean(epsilon_layer)
@@ -72,15 +71,14 @@ with graph.as_default():
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
 
         privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain
-        H_loss = -tf.reduce_mean(D_hacked_logits) + privacy_gain 
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain +dp_delta
+        H_loss = privacy_gain 
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
         tf.summary.image('decoded_from_fake',G_hacked)
         tf.summary.scalar('D_loss', D_loss)      
-        tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))        
-        tf.summary.scalar('H_loss',-tf.reduce_mean(D_hacked_logits))    
+        tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))          
         tf.summary.scalar('privacy_gain', privacy_gain)      
         tf.summary.scalar('epsilon', dp_epsilon)
         tf.summary.scalar('delta', dp_delta)        
@@ -88,6 +86,7 @@ with graph.as_default():
         tf.summary.histogram('delta_layer',delta_layer)        
         tf.summary.histogram('z_original',  z_original) 
         tf.summary.histogram('z_noise_applied',z_noised) 
+        tf.summary.histogram('z_noise',z_noise)         
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
@@ -95,7 +94,7 @@ with graph.as_default():
         D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_D, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
         H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
-        delta_clip = delta_layer.assign(tf.clip_by_value(delta_layer, 0.0, 1.0))
+
         timestamp = str(int(time.time()))
         if not os.path.exists('results/epsilon_delta_DP/'):
             os.makedirs('results/epsilon_delta_DP/')        
@@ -126,7 +125,7 @@ with graph.as_default():
                 enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb, Z_noise: enc_noise})  
             _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})       
-            summary, _, G_loss_curr, dp_epsilon_curr,dp_delta_curr,_ = sess.run([merged,G_solver, G_loss, dp_epsilon,dp_delta, delta_clip],feed_dict={X: X_mb, Z_noise: enc_noise})
+            summary, _, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged,G_solver, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
