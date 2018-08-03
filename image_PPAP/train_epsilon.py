@@ -119,8 +119,7 @@ with graph.as_default():
                     X_mb = next_batch(mb_size, x_train)
                     
                 enc_noise = np.random.laplace(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
-                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb, Z_noise: enc_noise}) 
-            _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})      
+                _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})     
             summary, _, G_loss_curr, dp_epsilon_curr = sess.run([merged,G_solver, G_loss, dp_epsilon],feed_dict={X: X_mb, Z_noise: enc_noise})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
