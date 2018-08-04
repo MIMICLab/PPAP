@@ -72,6 +72,7 @@ with graph.as_default():
         
         tf.summary.image('Original',A_true_flat)
         tf.summary.image('fake',G_sample)
+        tf.summary.image('Autoencoded',A_sample)        
         tf.summary.image('decoded_from_fake',G_hacked)
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))    
