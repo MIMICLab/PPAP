@@ -70,7 +70,7 @@ with graph.as_default():
 
         privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))    
         G_opt_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2))  
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss + dp_epsilon
         H_loss = privacy_gain 
         
         tf.summary.image('Original',A_true_flat)
