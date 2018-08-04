@@ -34,7 +34,6 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
     with tf.name_scope("DP_Encoder_Reverse"): 
         z_auto = tf.matmul(z,tf.transpose(W_fc1)) 
         z_auto = tf.contrib.layers.batch_norm(z_auto,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
@@ -58,7 +57,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         W_epsilon = tf.Variable(he_normal_init([z_dim]))
         var_G.append(W_epsilon)        
         W_epsilon = tf.nn.relu(W_epsilon)
-        dp_lambda = tf.divide(2.0 ,tf.add(W_epsilon,1e-8))
+        dp_lambda = tf.divide(1.0 ,tf.add(W_epsilon,1e-8))
         W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
         z_noise_applied = z
@@ -109,7 +108,6 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_G):
         var_G.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z = tf.nn.tanh(z)
     with tf.name_scope("DP_Encoder_Reverse"): 
         z_auto = tf.matmul(z,tf.transpose(W_fc1)) 
         z_auto = tf.contrib.layers.batch_norm(z_auto,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
@@ -135,7 +133,7 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_G):
         W_delta = tf.Variable(he_normal_init([z_dim]))
         var_G.append(W_delta)
         W_delta = tf.nn.relu(W_delta)
-        dp_delta = tf.square(tf.multiply(2.0,tf.log(tf.divide(1.25,tf.add(W_delta,1e-8)))))
+        dp_delta = tf.square(tf.multiply(1.0,tf.log(tf.divide(1.25,tf.add(W_delta,1e-8)))))
         dp_lambda = tf.multiply(dp_delta,tf.divide(2.0 ,tf.add(W_epsilon,1e-8)))
         W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
