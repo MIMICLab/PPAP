@@ -7,11 +7,7 @@ import os
 import math
 import time
 from utils.data_helper import data_loader
-
-def xavier_init(size):
-    in_dim = size[0]
-    xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
-    return tf.random_normal(shape=size, stddev=xavier_stddev)
+from model import xavier_init, he_normal_init
 
 dataset = sys.argv[1]
 
@@ -29,8 +25,7 @@ with graph.as_default():
         filter_sizes=[5, 5, 5, 5, 5]        
         hidden = 128
         z_dim = 128            
-        epsilon_init = float(sys.argv[2])
-        delta_init = float(sys.argv[3])
+
         if dataset == 'celebA' or dataset == 'lsun':        
             n_filters=[channels, hidden, hidden*2, hidden*4, hidden*8]
         else:      
@@ -44,11 +39,11 @@ with graph.as_default():
         var_G = []
         var_H = []
         #discriminator variables
-        W1 = tf.Variable(xavier_init([5,5,channels, hidden//2]))
-        W2 = tf.Variable(xavier_init([5,5, hidden//2,hidden]))
-        W3 = tf.Variable(xavier_init([5,5,hidden,hidden*2]))
+        W1 = tf.Variable(he_normal_init([5,5,channels, hidden//2]))
+        W2 = tf.Variable(he_normal_init([5,5, hidden//2,hidden]))
+        W3 = tf.Variable(he_normal_init([5,5,hidden,hidden*2]))
         if dataset == 'celebA' or dataset == 'lsun':
-            W4 = tf.Variable(xavier_init([5,5,hidden*2,hidden*4]))
+            W4 = tf.Variable(he_normal_init([5,5,hidden*2,hidden*4]))
             W5 = tf.Variable(xavier_init([4*4*hidden*4, 1]))
             b5 = tf.Variable(tf.zeros(shape=[1]))
             var_D = [W1,W2,W3,W4,W5,b5] 
@@ -59,7 +54,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample, z_original,z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G, epsilon_init,delta_init)
+        G_sample, A_sample, z_original,z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
