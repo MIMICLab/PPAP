@@ -11,15 +11,15 @@ def he_normal_init(size):
     he_stddev = tf.sqrt(2./in_dim)
     return tf.random_normal(shape=size, stddev=he_stddev)
 
-def epsilon_init(size):
+def epsilon_init(initial, size):
     in_dim = size[0]
-    he_stddev = tf.sqrt(2./in_dim)
-    return tf.add(1.0,tf.random_normal(shape=size, stddev=he_stddev))
+    stddev = 1. / tf.sqrt(in_dim / 2.)
+    return tf.add(initial,tf.random_normal(shape=size, stddev=stddev))
 
-def delta_init(size):
+def delta_init(initial, size):
     in_dim = size[0]
-    he_stddev = tf.sqrt(2./in_dim)
-    return tf.add(0.1,tf.random_normal(shape=size, stddev=he_stddev))
+    stddev = 1. / tf.sqrt(in_dim / 2.)
+    return tf.add(initial,tf.random_normal(shape=size, stddev=stddev))
 
 def ppap_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
     current_input = x    
@@ -87,7 +87,7 @@ def ppap_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, var_G):
   
     return g, a
 
-def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
+def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G, init_e):
     current_input = x    
     encoder = []
     shapes_enc = []
@@ -131,7 +131,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
         
     with tf.name_scope("Noise_Applier"):        
         z_original = z
-        W_epsilon = tf.Variable(epsilon_init([z_dim]))
+        W_epsilon = tf.Variable(epsilon_init(init_e, [z_dim]))
         var_G.append(W_epsilon)        
         W_epsilon = tf.maximum(tf.abs(W_epsilon),1e-8)
         dp_lambda = tf.divide(2.0,W_epsilon)
@@ -163,7 +163,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_G):
   
     return g, a, z_original, z_noise_applied, W_epsilon, W_noise
 
-def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_G):
+def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_G,init_e, init_d):
     current_input = x    
     encoder = []
     shapes_enc = []
@@ -206,10 +206,10 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_G):
         a = current_input        
     with tf.name_scope("Noise_Applier"):        
         z_original = z
-        W_epsilon = tf.Variable(epsilon_init([z_dim]))
+        W_epsilon = tf.Variable(epsilon_init(init_e, [z_dim]))
         var_G.append(W_epsilon)
         W_epsilon = tf.maximum(tf.abs(W_epsilon),1e-8)       
-        W_delta = tf.Variable(delta_init([z_dim]))
+        W_delta = tf.Variable(delta_init(init_d, [z_dim]))
         var_G.append(W_delta)
         W_delta = tf.maximum(tf.abs(W_delta),1e-8)
         dp_delta = tf.log(tf.divide(1.25,W_delta))

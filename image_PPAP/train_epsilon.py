@@ -10,7 +10,7 @@ from utils.data_helper import data_loader
 from model import xavier_init, he_normal_init
 
 dataset = sys.argv[1]
-
+init_epsilon = sys.argv[2]
 mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test  = data_loader(dataset)
     
     
@@ -54,7 +54,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample, z_original,z_noised, epsilon_layer, z_noise = edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G)
+        G_sample, A_sample, z_original,z_noised, epsilon_layer, z_noise = edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G, init_epsilon)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
