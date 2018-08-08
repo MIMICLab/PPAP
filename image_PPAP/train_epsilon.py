@@ -10,7 +10,7 @@ from utils.data_helper import data_loader
 from model import xavier_init, he_normal_init
 
 dataset = sys.argv[1]
-init_epsilon = sys.argv[2]
+init_epsilon = float(sys.argv[2])
 mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test  = data_loader(dataset)
     
     
