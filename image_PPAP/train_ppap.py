@@ -140,7 +140,7 @@ with graph.as_default():
                         Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
                         Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
                     else:
-                        Xt_mb = next_batch(100, x_test,shuffle=False)   
+                        Xt_mb = next_test_batch(ii,100, x_test)   
                     samples = sess.run(G_sample, feed_dict={X: Xt_mb})
                     if ii == 0:
                         generated = samples
@@ -153,7 +153,7 @@ with graph.as_default():
             Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
             Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
         else:
-            Xt_mb = next_batch(100, x_test,shuffle=False)
+            Xt_mb = next_test_batch(iii,100, x_test)
         samples = sess.run(G_sample, feed_dict={X: xt_mb})
         if iii == 0:
             generated = samples

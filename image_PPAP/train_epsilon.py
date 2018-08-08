@@ -149,7 +149,7 @@ with graph.as_default():
                         Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
                         Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
                     else:
-                        Xt_mb = next_batch(100, x_test,shuffle=False)
+                        Xt_mb = next_test_batch(ii, 100, x_test)
                     enc_noise = np.random.laplace(0.0,1.0,[100,z_dim]).astype(np.float32)    
                     samples = sess.run(G_sample, feed_dict={X: Xt_mb, Z_noise: enc_noise})
                     if ii == 0:
@@ -163,7 +163,7 @@ with graph.as_default():
             Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
             Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
         else:
-            Xt_mb = next_batch(100, x_test,shuffle=False)
+            Xt_mb = next_test_batch(iii, 100, x_test)
         enc_noise = np.random.laplace(0.0,1.0,[100,z_dim]).astype(np.float32)  
         samples = sess.run(G_sample, feed_dict={X: xt_mb, Z_noise: enc_noise})
         if iii == 0:

@@ -17,8 +17,17 @@ def next_batch(num, data, shuffle=True):
     if shuffle == True:
         np.random.shuffle(idx)
     idx = idx[:num]
-    data_shuffle = [data[ i] for i in idx]
+    data_shuffle = [data[i] for i in idx]
 
+    return np.asarray(data_shuffle)
+
+def next_test_batch(it, num, data):
+    '''
+    Return a total of `num` random samples and labels. 
+    '''
+    idx = np.arange(0 , len(data))
+    idx = idx[num*it:num*it+num]
+    data_shuffle = [data[i] for i in idx]
     return np.asarray(data_shuffle)
 
 def plot(samples, width, height, channels):
