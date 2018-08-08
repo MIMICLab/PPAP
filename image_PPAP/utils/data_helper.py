@@ -81,12 +81,12 @@ def data_loader(dataset):
         channels = 3     
         download_celeb_a("data")
         data_files = glob(os.path.join("data/celebA/*.jpg"))
-        len_x_train = 200000
-        len_x_test = 2599
+        len_x_train = 192599
+        len_x_test = 10000
         sample = [get_image(sample_file, 128, True, 64, is_grayscale = 0) for sample_file in data_files]
         sample_images = np.array(sample).astype(np.float32)
-        x_train = sample_images[:200000]
-        x_test = sample_images[200000:]
+        x_train = sample_images[:192599]
+        x_test = sample_images[192599:]
         
     if dataset == 'lsun':
         mb_size = 128
@@ -96,10 +96,10 @@ def data_loader(dataset):
         channels = 3    
         download_lsun("data")
         lsun = Lsun("data/lsun/bedroom_train_lmdb")
-        len_x_train = 3000000  
-        len_x_test = 33042
+        len_x_train = 3023042  
+        len_x_test = 10000
         sample_images = lsun.load_data(len_x_train)
-        x_train = sample_images[:3000000]
-        x_test = sample_images[3000000:]      
+        x_train = sample_images[:3023042]
+        x_test = sample_images[3023042:]      
         
     return mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test 
