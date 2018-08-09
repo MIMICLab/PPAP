@@ -125,7 +125,7 @@ with graph.as_default():
                     
                 enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
                 _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})       
-            summary, _,_, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged, A_solver,G_slover, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
+            summary, _,_, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged, A_solver,G_solver, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
