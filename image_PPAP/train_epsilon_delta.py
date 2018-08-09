@@ -39,6 +39,7 @@ with graph.as_default():
         #autoencoder variables
         var_G = []
         var_H = []
+        var_A = []
         #discriminator variables
         W1 = tf.Variable(he_normal_init([5,5,channels, hidden//2]))
         W2 = tf.Variable(he_normal_init([5,5, hidden//2,hidden]))
@@ -55,7 +56,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample, z_original,z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise, var_G,init_epsilon,init_delta)
+        G_sample, A_sample, z_original,z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise,var_A, var_G,init_epsilon,init_delta)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
@@ -67,8 +68,8 @@ with graph.as_default():
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
 
         privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
-        G_opt_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2)) 
-        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain + G_opt_loss
+        A_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2)) 
+        G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain
         H_loss = privacy_gain 
         
         tf.summary.image('Original',A_true_flat)
@@ -77,7 +78,7 @@ with graph.as_default():
         tf.summary.image('decoded_from_fake',G_hacked)
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))    
-        tf.summary.scalar('Encoder_loss', G_opt_loss)
+        tf.summary.scalar('Encoder_loss', A_loss)
         tf.summary.scalar('privacy_gain', privacy_gain)      
         tf.summary.scalar('epsilon', dp_epsilon)
         tf.summary.scalar('delta', dp_delta)        
@@ -89,7 +90,8 @@ with graph.as_default():
         merged = tf.summary.merge_all()
 
         num_batches_per_epoch = int((len_x_train-1)/mb_size) + 1
-       
+        
+        A_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(A_loss,var_list=var_A, global_step=global_step)       
         D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_D, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
         H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
@@ -123,7 +125,7 @@ with graph.as_default():
                     
                 enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
                 _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})       
-            summary, _, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged,G_solver, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
+            summary, _,_, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged, A_solver,G_slover, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
