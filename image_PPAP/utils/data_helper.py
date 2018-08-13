@@ -98,7 +98,7 @@ def data_loader(dataset):
         lsun = Lsun("data/lsun/bedroom_train_lmdb")
         len_x_train = 3023042  
         len_x_test = 10000
-        sample_images = lsun.load_data(len_x_train)
+        sample_images = lsun.load_data(len_x_train+len_x_test)
         x_train = sample_images[:3023042]
         x_test = sample_images[3023042:]      
         
