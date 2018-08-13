@@ -11,6 +11,7 @@ from model import xavier_init, he_normal_init
 
 dataset = sys.argv[1]
 init_epsilon = float(sys.argv[2])
+prev_timestamp = sys.argv[3]
 mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test  = data_loader(dataset)
     
     
@@ -91,7 +92,10 @@ with graph.as_default():
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
         H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
         
-        timestamp = str(int(time.time()))
+        if prev_timestamp:
+            timestamp = prev_timestamp
+        else:    
+            timestamp = str(int(time.time()))        
         if not os.path.exists('results/epsilon_DP/'):
             os.makedirs('results/epsilon_DP/')        
         out_dir = os.path.abspath(os.path.join(os.path.curdir, "results/epsilon_DP/models/{}_".format(dataset) + timestamp))
@@ -101,14 +105,16 @@ with graph.as_default():
             os.makedirs('results/epsilon_DP/models/')
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-            saver = tf.train.Saver(tf.global_variables())
         if not os.path.exists('results/epsilon_DP/dc_out_{}/'.format(dataset)):
             os.makedirs('results/epsilon_DP/dc_out_{}/'.format(dataset))
         if not os.path.exists('results/epsilon_DP/generated_{}/'.format(dataset)):
             os.makedirs('results/epsilon_DP/generated_{}/'.format(dataset))            
 
         train_writer = tf.summary.FileWriter('results/graphs/epsilon_DP/{}'.format(dataset),sess.graph)
+        saver = tf.train.Saver(tf.global_variables())
         sess.run(tf.global_variables_initializer())
+        if prev_timestamp:
+            saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))  
         i = 0       
         for it in range(1000000000):
             for _ in range(5):
