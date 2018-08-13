@@ -74,7 +74,7 @@ def data_loader(dataset):
         x_test = normalize(x_test)
 
     if dataset == 'celebA':
-        mb_size = 128
+        mb_size = 256
         X_dim = 4096
         width = 64
         height = 64
@@ -89,7 +89,7 @@ def data_loader(dataset):
         x_test = sample_images[192599:]
         
     if dataset == 'lsun':
-        mb_size = 128
+        mb_size = 256
         X_dim = 4096
         width = 64
         height = 64

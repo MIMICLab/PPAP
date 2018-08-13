@@ -10,7 +10,9 @@ from utils.data_helper import data_loader
 from model import xavier_init, he_normal_init
 
 dataset = sys.argv[1]
-prev_timestamp = sys.argv[2]
+model_name = sys.argv[2]
+prev_iter = int(sys.argv[3])
+
 mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test  = data_loader(dataset)
     
     
@@ -84,13 +86,11 @@ with graph.as_default():
         D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_D, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
         H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
-        if prev_timestamp:
-            timestamp = prev_timestamp
-        else:    
-            timestamp = str(int(time.time()))
+        
+        timestamp = str(int(time.time()))
         if not os.path.exists('results/PPAP/'):
             os.makedirs('results/PPAP/')        
-        out_dir = os.path.abspath(os.path.join(os.path.curdir, "results/PPAP/models/{}_".format(dataset) + timestamp))
+        out_dir = os.path.abspath(os.path.join(os.path.curdir, "results/PPAP/models/{}_".format(dataset) +model_name))
         checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
         checkpoint_prefix = os.path.join(checkpoint_dir, "model")
         if not os.path.exists('results/PPAP/models/'):
@@ -106,9 +106,9 @@ with graph.as_default():
         train_writer = tf.summary.FileWriter('results/graphs/PPAP/{}'.format(dataset),sess.graph)
         saver = tf.train.Saver(tf.global_variables())
         sess.run(tf.global_variables_initializer())
-        if prev_timestamp:
+        if prev_iter != 0:
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))  
-        i = 0       
+        i = prev_iter      
         for it in range(1000000000):
             for _ in range(5):
                 if dataset == 'mnist':
