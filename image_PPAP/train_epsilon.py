@@ -106,9 +106,7 @@ with graph.as_default():
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         if not os.path.exists('results/epsilon_DP/dc_out_{}/'.format(dataset)):
-            os.makedirs('results/epsilon_DP/dc_out_{}/'.format(dataset))
-        if not os.path.exists('results/epsilon_DP/generated_{}/'.format(dataset)):
-            os.makedirs('results/epsilon_DP/generated_{}/'.format(dataset))            
+            os.makedirs('results/epsilon_DP/dc_out_{}/'.format(dataset))         
 
         train_writer = tf.summary.FileWriter('results/graphs/epsilon_DP/{}'.format(dataset),sess.graph)
         saver = tf.train.Saver(tf.global_variables())
