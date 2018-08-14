@@ -113,7 +113,7 @@ with graph.as_default():
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
                 elif dataset == 'lsun':
-                    X_mb = x_train.load_data(mb_size)                    
+                    X_mb = x_train.next_batch(mb_size)                    
                 else:
                     X_mb = next_batch(mb_size, x_train)
                 _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb})     

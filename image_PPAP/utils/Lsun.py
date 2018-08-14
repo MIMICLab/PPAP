@@ -106,8 +106,7 @@ class Lsun(object):
                 with txn.cursor() as cursor:
                     for i in range(begin, end):
                         val = cursor.get(self._lmdb_keys[self._key_indice[i]])
-
-                        sio = StringIO.StringIO(val)
+                        sio = BytesIO(val)
 
                         img = scipy.misc.imread(sio)
                         img = scipy.misc.imresize(img,(64,64))
