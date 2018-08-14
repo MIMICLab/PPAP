@@ -31,8 +31,8 @@ def next_test_batch(it, num, data):
     return np.asarray(data_shuffle)
 
 def plot(samples, width, height, channels):
-    fig = plt.figure(figsize=(128,4))
-    gs = gridspec.GridSpec(4,128)
+    fig = plt.figure(figsize=(256,4))
+    gs = gridspec.GridSpec(4,256)
     gs.update(wspace=0.05, hspace=0.05)
     norm=plt.Normalize(0, 1)
     for i, sample in enumerate(samples):

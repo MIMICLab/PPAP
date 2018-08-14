@@ -121,6 +121,8 @@ with graph.as_default():
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
+                elif dataset == 'lsun':
+                    X_mb = x_train.load_data(mb_size)
                 else:
                     X_mb = next_batch(mb_size, x_train)
                     
@@ -137,11 +139,11 @@ with graph.as_default():
                 Xt_mb = x_test[:mb_size]
                 G_sample_curr, A_sample_curr, re_fake_curr = sess.run([G_sample,A_sample, G_hacked], feed_dict={X: Xt_mb, Z_noise: enc_noise})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
-                img_set = np.append(Xt_mb[:128], samples_flat[:128], axis=0)
+                img_set = np.append(Xt_mb[:256], samples_flat[:256], axis=0)
                 samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:128], axis=0)                     
+                img_set = np.append(img_set, samples_flat[:256], axis=0)                     
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:128], axis=0)               
+                img_set = np.append(img_set, samples_flat[:256], axis=0)               
 
                 fig = plot(img_set, width, height, channels)
                 plt.savefig('results/epsilon_DP/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
@@ -149,32 +151,3 @@ with graph.as_default():
                 i += 1
                 path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                 print('Saved model at {} at step {}'.format(path, current_step))
-
-            if it% 100000 == 0 and it!=0:
-                for ii in range(len_x_test//100):
-                    if dataset == 'mnist':
-                        Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
-                        Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
-                    else:
-                        Xt_mb = next_test_batch(ii, 100, x_test)
-                    enc_noise = np.random.laplace(0.0,1.0,[100,z_dim]).astype(np.float32)    
-                    samples = sess.run(G_sample, feed_dict={X: Xt_mb, Z_noise: enc_noise})
-                    if ii == 0:
-                        generated = samples
-                    else:
-                        generated = np.concatenate((generated,samples), axis=0)
-                np.save('results/epsilon_DP/generated_{}/generated_image.npy'.format(dataset), generated)
-
-    for iii in range(len_x_test//100):
-        if dataset == 'mnist':
-            Xt_mb, _ = x_train.test.next_batch(100,shuffle=False)
-            Xt_mb = np.reshape(Xt_mb,[-1,28,28,1])
-        else:
-            Xt_mb = next_test_batch(iii, 100, x_test)
-        enc_noise = np.random.laplace(0.0,1.0,[100,z_dim]).astype(np.float32)  
-        samples = sess.run(G_sample, feed_dict={X: xt_mb, Z_noise: enc_noise})
-        if iii == 0:
-            generated = samples
-        else:
-            generated = np.concatenate((generated,samples), axis=0)
-    np.save('results/epsilon_DP/generated_{}/generated_image.npy'.format(dataset), generated)
