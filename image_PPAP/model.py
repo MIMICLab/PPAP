@@ -393,4 +393,3 @@ def gradient_penalty(G_sample, A_true_flat, mb_size, var_D):
     slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_D_X_hat), reduction_indices=red_idx))
     gradient_penalty = tf.reduce_mean(tf.square(slopes - 1.))
     return gradient_penalty
-

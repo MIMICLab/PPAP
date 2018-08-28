@@ -154,4 +154,3 @@ with graph.as_default():
                 i += 1
                 path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                 print('Saved model at {} at step {}'.format(path, current_step))
-
