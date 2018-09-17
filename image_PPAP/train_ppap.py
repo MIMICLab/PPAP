@@ -109,7 +109,7 @@ with graph.as_default():
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))  
         i = prev_iter 
         if prev_iter == 0:
-            for idx in range(num_batches_per_epoch*1000):
+            for idx in range(num_batches_per_epoch*300):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
@@ -122,7 +122,9 @@ with graph.as_default():
                 train_writer.add_summary(summary,current_step)
                 if idx % 100 == 0:
                     print('Iter: {}; A_loss: {:.4}; H_loss: {:.4};'.format(idx,A_loss_curr, H_loss_curr))
-                    
+                if idx % 1000 == 0: 
+                    path = saver.save(sess, checkpoint_prefix, global_step=current_step)
+                    print('Saved model at {} at step {}'.format(path, current_step))
         for idx in range(num_batches_per_epoch):
             if dataset == 'mnist':
                 X_mb, _ = x_train.train.next_batch(mb_size)

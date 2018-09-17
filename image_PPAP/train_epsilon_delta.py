@@ -60,7 +60,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, latent_z, z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise,var_A, var_G,init_epsilon,init_delta,Z_S)
+        G_sample, latent_z, z_noised, epsilon_layer, delta_layer, z_noise,e_var,d_var = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise,var_A, var_G,init_epsilon,init_delta,Z_S)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
@@ -101,7 +101,8 @@ with graph.as_default():
         D_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(D_loss,var_list=var_D, global_step=global_step)
         G_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(G_loss,var_list=var_G, global_step=global_step)
         H_solver = tf.train.AdamOptimizer(learning_rate=1e-4,beta1=0.5, beta2=0.9).minimize(H_loss,var_list=var_H, global_step=global_step)
-
+        clip_epsilon =  e_var.assign(tf.maximum(epsilon_layer,1e-8))
+        clip_delta =  d_var.assign(tf.clip_by_value(epsilon_layer,1e-8, 1.0 - 1e-8))
 
         timestamp = str(int(time.time()))
         if not os.path.exists('results/epsilon_delta_DP/'):
@@ -123,7 +124,7 @@ with graph.as_default():
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))        
         i = prev_iter 
         if prev_iter == 0:
-            for idx in range(num_batches_per_epoch*100):
+            for idx in range(num_batches_per_epoch*300):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
@@ -137,7 +138,9 @@ with graph.as_default():
                 train_writer.add_summary(summary,current_step)
                 if idx % 100 == 0:
                     print('Iter: {}; A_loss: {:.4}; H_loss: {:.4};'.format(idx,A_loss_curr, H_loss_curr))
-                    
+                if idx % 1000 == 0: 
+                    path = saver.save(sess, checkpoint_prefix, global_step=current_step)
+                    print('Saved model at {} at step {}'.format(path, current_step))                    
         for idx in range(num_batches_per_epoch):
             if dataset == 'mnist':
                 X_mb, _ = x_train.train.next_batch(mb_size)
@@ -171,7 +174,7 @@ with graph.as_default():
                 enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
                 _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity}) 
             _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity})                               
-            summary, _, G_loss_curr, dp_epsilon_curr = sess.run([merged, G_solver, G_loss, dp_epsilon],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity})
+            summary, _, G_loss_curr, dp_epsilon_curr,dp_delta_curr, _,_ = sess.run([merged, G_solver, G_loss, dp_epsilon, dp_delta, clip_epsilon,clip_delta],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         

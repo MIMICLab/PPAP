@@ -99,6 +99,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var
     with tf.name_scope("Noise_Applier"):      
         z_original = z
         W_epsilon = tf.Variable(epsilon_init(init_e, [z_dim]))
+        epsilon_var = W_epsilon
         var_G.append(W_epsilon)        
         W_epsilon = tf.maximum(W_epsilon,1e-8)
         dp_lambda = tf.divide(sensitivity,W_epsilon)
@@ -130,7 +131,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var
             current_input = output
         g = current_input
   
-    return g, z_original, z_noise_applied, W_epsilon, W_noise
+    return g, z_original, z_noise_applied, W_epsilon, W_noise, epsilon_var
 
 def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, var_G,init_e, init_d,sensitivity):
     current_input = x    
@@ -159,9 +160,11 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, v
     with tf.name_scope("Noise_Applier"):       
         z_original = z
         W_epsilon = tf.Variable(epsilon_init(init_e, [z_dim]))
+        epsilon_var = W_epsilon
         var_G.append(W_epsilon)
         W_epsilon = tf.maximum(tf.abs(W_epsilon),1e-8)       
         W_delta = tf.Variable(delta_init(init_d, [z_dim]))
+        delta_var = W_delta
         var_G.append(W_delta)
         W_delta = tf.maximum(W_delta,1e-8)
         W_delta = tf.minimum(W_delta, 1.0)
@@ -196,7 +199,7 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, v
             current_input = output
         g = current_input
  
-    return g, z_original, z_noise_applied, W_epsilon, W_delta, W_noise
+    return g, z_original, z_noise_applied, W_epsilon, W_delta, W_noise, epsilon_var, delta_var
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    
