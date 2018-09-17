@@ -123,7 +123,7 @@ with graph.as_default():
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))        
         i = prev_iter 
         if prev_iter == 0:
-            for idx in range(num_batches_per_epoch*1000):
+            for idx in range(num_batches_per_epoch*100):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
@@ -158,7 +158,7 @@ with graph.as_default():
         print("Approximated Global Sensitivity:") 
         print(z_sensitivity)        
         z_sensitivity = np.tile(z_sensitivity,(mb_size,1))                        
-        for it in range(1000000000):
+        for it in range(num_batches_per_epoch*1000):
             for _ in range(5):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
