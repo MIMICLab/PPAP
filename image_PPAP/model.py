@@ -43,30 +43,12 @@ def ppap_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x,var_A, var_G
         W_fc1 = tf.Variable(xavier_init([z_flat_dim, z_dim]))
         var_A.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
-        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        
-    with tf.name_scope("DP_Encoder_Reverse"): 
-        z_auto = tf.matmul(z,tf.transpose(W_fc1)) 
-        z_auto = tf.contrib.layers.batch_norm(z_auto,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_auto = tf.nn.relu(z_auto)
-        current_input = tf.reshape(z_auto, [-1, 4, 4, n_filters[-1]])          
-        for layer_i, shape in enumerate(shapes_enc):
-            W_enc = encoder[layer_i]
-            deconv = tf.nn.conv2d_transpose(current_input, W_enc,
-                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
-                                     strides=[1, 2, 2, 1], padding='SAME')
-
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)           
-                output = tf.nn.relu(deconv)
-            current_input = output
-        a = current_input
-        
+        z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)        
+        z_original = z
     with tf.name_scope("DP_decoder"):        
         W_fc2 = tf.Variable(xavier_init([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
+        var_A.append(W_fc2)
         z_ = tf.matmul(z,W_fc2) 
         z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z_ = tf.nn.relu(z_)
@@ -75,6 +57,7 @@ def ppap_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x,var_A, var_G
             W_enc = encoder[layer_i]
             W = tf.Variable(he_normal_init(W_enc.get_shape().as_list()))
             var_G.append(W)
+            var_A.append(W)
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')       
@@ -86,9 +69,9 @@ def ppap_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x,var_A, var_G
             current_input = output
         g = current_input
   
-    return g, a
+    return g, z_original
 
-def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var_G, init_e):
+def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var_G, init_e,sensitivity):
     current_input = x    
     encoder = []
     shapes_enc = []
@@ -112,31 +95,13 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         
-    with tf.name_scope("DP_Encoder_Reverse"): 
-        z_auto = tf.matmul(z,tf.transpose(W_fc1)) 
-        z_auto = tf.contrib.layers.batch_norm(z_auto,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_auto = tf.nn.relu(z_auto)
-        current_input = tf.reshape(z_auto, [-1, 4, 4, n_filters[-1]])          
-        for layer_i, shape in enumerate(shapes_enc):
-            W_enc = encoder[layer_i]
-            deconv = tf.nn.conv2d_transpose(current_input, W_enc,
-                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
-                                     strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:     
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)           
-                output = tf.nn.relu(deconv)
-            current_input = output
-        a = current_input
         
-    with tf.name_scope("Noise_Applier"):
-        z = tf.nn.tanh(z)        
+    with tf.name_scope("Noise_Applier"):      
         z_original = z
         W_epsilon = tf.Variable(epsilon_init(init_e, [z_dim]))
         var_G.append(W_epsilon)        
-        W_epsilon = tf.maximum(tf.abs(W_epsilon),1e-8)
-        dp_lambda = tf.divide(2.0,W_epsilon)
+        W_epsilon = tf.maximum(W_epsilon,1e-8)
+        dp_lambda = tf.divide(sensitivity,W_epsilon)
         W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
         z_noise_applied = z
@@ -144,6 +109,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var
     with tf.name_scope("DP_decoder"):        
         W_fc2 = tf.Variable(xavier_init([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
+        var_A.append(W_fc2)
         z_ = tf.matmul(z,W_fc2) 
         z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z_ = tf.nn.relu(z_)
@@ -152,6 +118,7 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var
             W_enc = encoder[layer_i]
             W = tf.Variable(he_normal_init(W_enc.get_shape().as_list()))
             var_G.append(W)
+            var_A.append(W)
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')           
@@ -163,9 +130,9 @@ def edp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, x, Y, var_A, var
             current_input = output
         g = current_input
   
-    return g, a, z_original, z_noise_applied, W_epsilon, W_noise
+    return g, z_original, z_noise_applied, W_epsilon, W_noise
 
-def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, var_G,init_e, init_d):
+def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, var_G,init_e, init_d,sensitivity):
     current_input = x    
     encoder = []
     shapes_enc = []
@@ -188,43 +155,27 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, v
         var_A.append(W_fc1)
         z = tf.matmul(z_flat,W_fc1)
         z = tf.contrib.layers.batch_norm(z,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-
-    with tf.name_scope("DP_Encoder_Reverse"): 
-        z_auto = tf.matmul(z,tf.transpose(W_fc1)) 
-        z_auto = tf.contrib.layers.batch_norm(z_auto,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
-        z_auto = tf.nn.relu(z_auto)
-        current_input = tf.reshape(z_auto, [-1, 4, 4, n_filters[-1]])          
-        for layer_i, shape in enumerate(shapes_enc):
-            W_enc = encoder[layer_i]
-            deconv = tf.nn.conv2d_transpose(current_input, W_enc,
-                                     tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
-                                     strides=[1, 2, 2, 1], padding='SAME')
-            if layer_i == len(n_filters)-2:
-                output = tf.nn.sigmoid(deconv)
-            else:
-                deconv = tf.contrib.layers.batch_norm(deconv,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)           
-                output = tf.nn.relu(deconv)
-            current_input = output
-        a = current_input        
-    with tf.name_scope("Noise_Applier"):
-        z = tf.nn.tanh(z)        
+      
+    with tf.name_scope("Noise_Applier"):       
         z_original = z
         W_epsilon = tf.Variable(epsilon_init(init_e, [z_dim]))
         var_G.append(W_epsilon)
         W_epsilon = tf.maximum(tf.abs(W_epsilon),1e-8)       
         W_delta = tf.Variable(delta_init(init_d, [z_dim]))
         var_G.append(W_delta)
-        W_delta = tf.maximum(tf.abs(W_delta),1e-8)
+        W_delta = tf.maximum(W_delta,1e-8)
+        W_delta = tf.minimum(W_delta, 1.0)
         dp_delta = tf.log(tf.divide(1.25,W_delta))
         dp_delta = tf.maximum(dp_delta,0)
         dp_delta = tf.sqrt(tf.multiply(2.0,dp_delta))      
-        dp_lambda = tf.multiply(dp_delta,tf.divide(2.0,W_epsilon))
+        dp_lambda = tf.multiply(dp_delta,tf.divide(sensitivity,W_epsilon))
         W_noise = tf.multiply(Y,dp_lambda)
         z = tf.add(z,W_noise)
         z_noise_applied = z
     with tf.name_scope("DP_decoder"):        
         W_fc2 = tf.Variable(xavier_init([z_dim, z_flat_dim]))
         var_G.append(W_fc2)
+        var_A.append(W_fc2)        
         z_ = tf.matmul(z,W_fc2) 
         z_ = tf.contrib.layers.batch_norm(z_,updates_collections=None,decay=0.9, zero_debias_moving_mean=True,is_training=True)
         z_ = tf.nn.relu(z_)
@@ -233,6 +184,7 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, v
             W_enc = encoder[layer_i]
             W = tf.Variable(he_normal_init(W_enc.get_shape().as_list()))
             var_G.append(W)
+            var_A.append(W)            
             deconv = tf.nn.conv2d_transpose(current_input, W,
                                      tf.stack([tf.shape(x)[0], shape[1], shape[2], shape[3]]),
                                      strides=[1, 2, 2, 1], padding='SAME')           
@@ -244,7 +196,7 @@ def eddp_autoencoder(input_shape, n_filters, filter_sizes, z_dim, x, Y, var_A, v
             current_input = output
         g = current_input
  
-    return g, a, z_original, z_noise_applied, W_epsilon, W_delta, W_noise
+    return g, z_original, z_noise_applied, W_epsilon, W_delta, W_noise
 
 def hacker(input_shape, n_filters, filter_sizes,z_dim, x, var_G, reuse=False):
     current_input = x    

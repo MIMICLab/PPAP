@@ -10,10 +10,10 @@ from utils.data_helper import data_loader
 from model import xavier_init, he_normal_init
 
 dataset = sys.argv[1]
-init_epsilon = float(sys.argv[2])
-init_delta = float(sys.argv[3])
-model_name = sys.argv[4]
-prev_iter = int(sys.argv[5])
+model_name = sys.argv[2]
+prev_iter = int(sys.argv[3])
+init_epsilon = 1.0
+init_delta = 1e-5
 
 mb_size, X_dim, width, height, channels,len_x_train, x_train, len_x_test, x_test  = data_loader(dataset)
 
@@ -29,13 +29,14 @@ with graph.as_default():
         filter_sizes=[5, 5, 5, 5, 5]        
         hidden = 128
         z_dim = 128            
-
+        z_sensitivity = np.zeros(z_dim)
         if dataset == 'celebA' or dataset == 'lsun':        
             n_filters=[channels, hidden, hidden*2, hidden*4, hidden*8]
         else:      
             n_filters=[channels, hidden, hidden*2, hidden*4]
             
         X = tf.placeholder(tf.float32, shape=[None, width, height,channels])
+        Z_S = tf.placeholder(tf.float32, shape=[None,  z_dim])         
         Z_noise = tf.placeholder(tf.float32, shape=[None,  z_dim])
         A_true_flat = X
         
@@ -59,7 +60,7 @@ with graph.as_default():
         
         global_step = tf.Variable(0, name="global_step", trainable=False)        
 
-        G_sample, A_sample, z_original,z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise,var_A, var_G,init_epsilon,init_delta)
+        G_sample, latent_z, z_noised, epsilon_layer, delta_layer, z_noise = eddp_autoencoder(input_shape, n_filters, filter_sizes,z_dim, A_true_flat, Z_noise,var_A, var_G,init_epsilon,init_delta,Z_S)
         G_hacked = hacker(input_shape, n_filters, filter_sizes,z_dim, G_sample, var_H)
              
         D_real_logits = discriminator(A_true_flat, var_D)
@@ -71,13 +72,15 @@ with graph.as_default():
         D_loss = tf.reduce_mean(D_fake_logits) - tf.reduce_mean(D_real_logits) +10.0*gp    
 
         privacy_gain = tf.reduce_mean(tf.pow(A_true_flat - G_hacked,2))        
-        A_loss = tf.reduce_mean(tf.pow(A_true_flat - A_sample,2)) 
+        A_loss = tf.reduce_mean(tf.pow(A_true_flat - G_sample,2)) 
         G_loss = -tf.reduce_mean(D_fake_logits) - privacy_gain
         H_loss = privacy_gain 
+
+        latent_max = tf.reduce_max(latent_z, axis = 0)
+        latent_min = tf.reduce_min(latent_z, axis = 0)
         
         tf.summary.image('Original',A_true_flat)
-        tf.summary.image('fake',G_sample)
-        tf.summary.image('Autoencoded',A_sample)        
+        tf.summary.image('fake',G_sample)      
         tf.summary.image('decoded_from_fake',G_hacked)
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))    
@@ -87,7 +90,7 @@ with graph.as_default():
         tf.summary.scalar('delta', dp_delta)        
         tf.summary.histogram('epsilon_layer',epsilon_layer)
         tf.summary.histogram('delta_layer',delta_layer)        
-        tf.summary.histogram('z_original',  z_original) 
+        tf.summary.histogram('z_original',  latent_z) 
         tf.summary.histogram('z_noise_applied',z_noised) 
         tf.summary.histogram('z_noise',z_noise)         
         merged = tf.summary.merge_all()
@@ -118,20 +121,57 @@ with graph.as_default():
         sess.run(tf.global_variables_initializer())
         if prev_iter != 0:
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))        
-        i = prev_iter       
+        i = prev_iter 
+        if prev_iter == 0:
+            for idx in range(num_batches_per_epoch*1000):
+                if dataset == 'mnist':
+                    X_mb, _ = x_train.train.next_batch(mb_size)
+                    X_mb = np.reshape(X_mb,[-1,28,28,1])
+                elif dataset == 'lsun':
+                    X_mb = x_train.next_batch(mb_size)                    
+                else:
+                    X_mb = next_batch(mb_size, x_train)   
+                enc_noise = np.random.normal(0.0,0.0,[mb_size,z_dim]).astype(np.float32)              
+                summary,_,_, A_loss_curr, H_loss_curr = sess.run([merged, A_solver, H_solver, A_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: enc_noise})
+                current_step = tf.train.global_step(sess, global_step)
+                train_writer.add_summary(summary,current_step)
+                if idx % 100 == 0:
+                    print('Iter: {}; A_loss: {:.4}; H_loss: {:.4};'.format(idx,A_loss_curr, H_loss_curr))
+                    
+        for idx in range(num_batches_per_epoch):
+            if dataset == 'mnist':
+                X_mb, _ = x_train.train.next_batch(mb_size)
+                X_mb = np.reshape(X_mb,[-1,28,28,1])
+            elif dataset == 'lsun':
+                X_mb = x_train.next_batch(mb_size)                    
+            else:
+                X_mb = next_batch(mb_size, x_train) 
+            enc_noise = np.random.normal(0.0,0.0,[mb_size,z_dim]).astype(np.float32)                  
+            max_curr, min_curr = sess.run([latent_max,latent_min], feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: enc_noise})
+            if idx == 0:
+                z_max = max_curr
+                z_min = min_curr
+            else:
+                z_max = np.maximum(z_max,max_curr)
+                z_min = np.minimum(z_min,min_curr)
+        z_sensitivity = np.abs(np.subtract(z_max,z_min))
+        print("Approximated Global Sensitivity:") 
+        print(z_sensitivity)        
+        z_sensitivity = np.tile(z_sensitivity,(mb_size,1))                        
         for it in range(1000000000):
             for _ in range(5):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
                 elif dataset == 'lsun':
-                    X_mb = x_train.next_batch(mb_size)    
+                    X_mb = x_train.next_batch(mb_size)
                 else:
                     X_mb = next_batch(mb_size, x_train)
                     
                 enc_noise = np.random.normal(0.0,1.0,[mb_size,z_dim]).astype(np.float32)  
-                _, _, D_loss_curr, H_loss_curr = sess.run([D_solver,H_solver, D_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise})       
-            summary, _,_, G_loss_curr, dp_epsilon_curr,dp_delta_curr = sess.run([merged, A_solver,G_solver, G_loss, dp_epsilon,dp_delta],feed_dict={X: X_mb, Z_noise: enc_noise})
+                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity}) 
+            _, H_loss_curr = sess.run([H_solver, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity})                               
+            summary, _, G_loss_curr, dp_epsilon_curr = sess.run([merged, G_solver, G_loss, dp_epsilon],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity})
             current_step = tf.train.global_step(sess, global_step)
             train_writer.add_summary(summary,current_step)
         
@@ -140,13 +180,11 @@ with graph.as_default():
 
             if it % 1000 == 0:   
                 Xt_mb = x_test[:mb_size]
-                G_sample_curr,A_sample_curr, re_fake_curr = sess.run([G_sample,A_sample, G_hacked], feed_dict={X: Xt_mb, Z_noise: enc_noise})
+                G_sample_curr, re_fake_curr = sess.run([G_sample,G_hacked],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: z_sensitivity})
                 samples_flat = tf.reshape(G_sample_curr,[-1,width,height,channels]).eval()
-                img_set = np.append(Xt_mb[:256], samples_flat[:256], axis=0)
-                samples_flat = tf.reshape(A_sample_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:256], axis=0)                     
+                img_set = np.append(Xt_mb[:256], samples_flat[:256], axis=0)                  
                 samples_flat = tf.reshape(re_fake_curr,[-1,width,height,channels]).eval() 
-                img_set = np.append(img_set, samples_flat[:256], axis=0)                 
+                img_set = np.append(img_set, samples_flat[:256], axis=0)                   
 
                 fig = plot(img_set, width, height, channels)
                 plt.savefig('results/epsilon_delta_DP/dc_out_{}/{}.png'.format(dataset,str(i).zfill(3)), bbox_inches='tight')
