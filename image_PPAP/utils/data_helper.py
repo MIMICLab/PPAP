@@ -6,7 +6,7 @@ import os
 import math
 import time
 from tensorflow.examples.tutorials.mnist import input_data
-from tensorflow.python.keras._impl.keras.datasets.cifar10 import load_data
+from tensorflow.keras.datasets.cifar10 import load_data
 from glob import glob
 from random import shuffle
 from utils.download import download_celeb_a, download_lsun

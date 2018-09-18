@@ -84,7 +84,7 @@ with graph.as_default():
         tf.summary.image('decoded_from_fake',G_hacked)
         tf.summary.scalar('D_loss', D_loss)      
         tf.summary.scalar('G_loss',-tf.reduce_mean(D_fake_logits))    
-        tf.summary.scalar('Encoder_loss', A_loss)
+        tf.summary.scalar('A_loss', A_loss)
         tf.summary.scalar('privacy_gain', privacy_gain)      
         tf.summary.scalar('epsilon', dp_epsilon)
         tf.summary.scalar('delta', dp_delta)        
