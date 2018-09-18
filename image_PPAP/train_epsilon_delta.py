@@ -133,11 +133,11 @@ with graph.as_default():
                 else:
                     X_mb = next_batch(mb_size, x_train)   
                 enc_noise = np.random.normal(0.0,0.0,[mb_size,z_dim]).astype(np.float32)              
-                summary,_,_, A_loss_curr, H_loss_curr = sess.run([merged, A_solver, H_solver, A_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: enc_noise})
+                summary,_, A_loss_curr= sess.run([merged, A_solver, A_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: enc_noise})
                 current_step = tf.train.global_step(sess, global_step)
                 train_writer.add_summary(summary,current_step)
                 if idx % 100 == 0:
-                    print('Iter: {}; A_loss: {:.4}; H_loss: {:.4};'.format(idx,A_loss_curr, H_loss_curr))
+                    print('Iter: {}; A_loss: {:.4};'.format(idx,A_loss_curr))
                 if idx % 1000 == 0: 
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                     print('Saved model at {} at step {}'.format(path, current_step))                    

@@ -117,11 +117,11 @@ with graph.as_default():
                     X_mb = x_train.next_batch(mb_size)                    
                 else:
                     X_mb = next_batch(mb_size, x_train)                
-                summary,_,_, A_loss_curr, H_loss_curr = sess.run([merged, A_solver, H_solver, A_loss, H_loss],feed_dict={X: X_mb})
+                summary,_, A_loss_curr= sess.run([merged, A_solver,  A_loss],feed_dict={X: X_mb})
                 current_step = tf.train.global_step(sess, global_step)
                 train_writer.add_summary(summary,current_step)
                 if idx % 100 == 0:
-                    print('Iter: {}; A_loss: {:.4}; H_loss: {:.4};'.format(idx,A_loss_curr, H_loss_curr))
+                    print('Iter: {}; A_loss: {:.4};'.format(idx,A_loss_curr))
                 if idx % 1000 == 0: 
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                     print('Saved model at {} at step {}'.format(path, current_step))
@@ -143,6 +143,7 @@ with graph.as_default():
         z_sensitivity = np.abs(np.subtract(z_max,z_min))
         print("Approximated Global Sensitivity:")
         print(z_sensitivity)
+        sess.run(tf.variables_initializer(var_list=var_G))
         for it in range(num_batches_per_epoch*1000):
             for _ in range(5):
                 if dataset == 'mnist':

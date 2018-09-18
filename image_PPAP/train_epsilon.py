@@ -118,7 +118,7 @@ with graph.as_default():
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))  
         i = prev_iter   
         if prev_iter == 0:
-            for idx in range(1):
+            for idx in range(num_batches_per_epoch*300):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
@@ -127,11 +127,11 @@ with graph.as_default():
                 else:
                     X_mb = next_batch(mb_size, x_train)   
                 enc_noise = np.random.laplace(0.0,0.0,[mb_size,z_dim]).astype(np.float32)  
-                summary,_,_, A_loss_curr, H_loss_curr = sess.run([merged, A_solver, H_solver, A_loss, H_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: enc_noise})
+                summary,_, A_loss_curr= sess.run([merged, A_solver, A_loss],feed_dict={X: X_mb, Z_noise: enc_noise, Z_S: enc_noise})
                 current_step = tf.train.global_step(sess, global_step)
                 train_writer.add_summary(summary,current_step)
                 if idx % 100 == 0:
-                    print('Iter: {}; A_loss: {:.4}; H_loss: {:.4};'.format(idx,A_loss_curr, H_loss_curr))
+                    print('Iter: {}; A_loss: {:.4};'.format(idx,A_loss_curr))
                 if idx % 1000 == 0: 
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
                     print('Saved model at {} at step {}'.format(path, current_step))                    
@@ -156,6 +156,7 @@ with graph.as_default():
         print("Approximated Global Sensitivity:") 
         print(z_sensitivity)        
         z_sensitivity = np.tile(z_sensitivity,(mb_size,1))
+      
         for it in range(num_batches_per_epoch*1000):
             for _ in range(5):
                 if dataset == 'mnist':
