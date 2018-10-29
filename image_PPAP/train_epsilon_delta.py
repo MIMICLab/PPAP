@@ -124,7 +124,7 @@ with graph.as_default():
             saver.restore(sess,tf.train.latest_checkpoint(checkpoint_dir))        
         i = prev_iter 
         if prev_iter == 0:
-            for idx in range(num_batches_per_epoch*100):
+            for idx in range(num_batches_per_epoch*10):
                 if dataset == 'mnist':
                     X_mb, _ = x_train.train.next_batch(mb_size)
                     X_mb = np.reshape(X_mb,[-1,28,28,1])
