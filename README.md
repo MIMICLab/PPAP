@@ -1,5 +1,6 @@
 # PPAPNet
-Privacy Preserving Attacker-Protector Adversarial Autoencoder for privacy-preserved data publication
+Latent-space-level Image Anonymization
+with Adversarial Protector Networks
 
 Along with recent achievements in deep learning empowered by enormous amounts of training data, preserving privacy of an individual related to the gathered data is becoming an essential part of public data collection and publication. Advancements in deep learning threaten traditional image anonymization techniques with model inversion attacks that try to reconstruct the original image from the anonymized image. 
 
