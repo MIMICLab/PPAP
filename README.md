@@ -7,8 +7,7 @@ Along with recent achievements in deep learning empowered by enormous amounts of
 In this paper, we propose a privacy-preserving adversarial protector network (PPAPNet) as an image anonymization tool to convert an image into another synthetic image that is both realistic and immune to model inversion attacks. Our experiments on various datasets show that PPAPNet can effectively convert a sensitive image into a high-quality and attack-immune synthetic image. 
 
 T. Kim and J. Yang, "Latent-space-level Image Anonymization with Adversarial Protector Networks," in IEEE Access.
-doi: 10.1109/ACCESS.2019.2924479
-keywords: {Adversarial Learning;Data privacy;Deep Learning;Differential Privacy;Generative Adversarial Networks;Machine Learning;Model Inversion Attacks},
+
 URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8744221&isnumber=6514899
 
 ![alt text](https://github.com/tgisaturday/PPAP/blob/master/figure1.png)
