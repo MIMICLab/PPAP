@@ -8,6 +8,6 @@ In this paper, we propose a privacy-preserving adversarial protector network (PP
 
 T. Kim and J. Yang, "Latent-space-level Image Anonymization with Adversarial Protector Networks," in IEEE Access.
 
-URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8744221&isnumber=6514899
+URL: https://ieeexplore.ieee.org/abstract/document/8744221
 
 ![alt text](https://github.com/tgisaturday/PPAP/blob/master/figure1.png)
