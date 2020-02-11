@@ -13,4 +13,4 @@ URL: https://ieeexplore.ieee.org/abstract/document/8744221
 ![alt text](https://github.com/tgisaturday/PPAP/blob/master/figure1.png)
 
 [Training]
-'''train_[...].py [dataset_name] [model_name] [previous_iteration(0 if initial training)]'''
+'train_[...].py [dataset_name] [model_name] [previous_iteration(0 if initial training)]'
